@@ -1,0 +1,288 @@
+:root {
+  --bg: #ffffff;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #f9fafb;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-surface: #eef2ff;
+  --star: #d97706;
+  --star-surface: #fffbeb;
+  --danger: #b91c1c;
+  --danger-surface: #fef2f2;
+  --success: #047857;
+  --success-surface: #ecfdf5;
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+header .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.85;
+}
+
+.content {
+  padding: 12px 14px 14px;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+input,
+select {
+  width: 100%;
+  font: inherit;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.btn-primary {
+  width: 100%;
+  margin-top: 12px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-star {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--star-surface);
+  border-color: #fde68a;
+  color: var(--star);
+}
+
+.btn-star:hover:not(:disabled) {
+  border-color: var(--star);
+}
+
+.btn-star.is-starred {
+  background: var(--star);
+  border-color: var(--star);
+  color: #fff;
+}
+
+.btn-star.is-starred:disabled {
+  opacity: 1;
+}
+
+.btn-secondary {
+  background: var(--accent);
+  color: #fff;
+  flex: 0 0 auto;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+#loadingView {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 14px;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.posting-header {
+  margin-bottom: 10px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-surface);
+  color: var(--accent);
+}
+
+h2 {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-top: 10px;
+  background: var(--surface);
+}
+
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+#verdictInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.verdict-line {
+  border-left: 3px solid var(--border);
+  padding: 2px 0 2px 8px;
+}
+
+.verdict-line .stage {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.verdict-line .value {
+  font-size: 12px;
+}
+
+.verdict-line.tone-strong {
+  border-color: var(--success);
+}
+.verdict-line.tone-strong .value {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.verdict-line.tone-moderate {
+  border-color: var(--star);
+}
+.verdict-line.tone-moderate .value {
+  color: var(--star);
+  font-weight: 600;
+}
+
+.verdict-line.tone-weak {
+  border-color: var(--danger);
+}
+.verdict-line.tone-weak .value {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.verdict-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row select {
+  flex: 1 1 auto;
+}
+
+#status {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  min-height: 1em;
+}
+
+#status.tone-error {
+  color: var(--danger);
+}
+
+#status.tone-success {
+  color: var(--success);
+}

@@ -1,0 +1,282 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Argus</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <span class="dot"></span>Argus
+      <nav id="tabs">
+        <button class="tab-btn active" data-tab="postings">Postings</button>
+        <button class="tab-btn" data-tab="applications">Applications</button>
+        <button class="tab-btn" data-tab="roadmap">Roadmap</button>
+        <button class="tab-btn" data-tab="companies">Companies</button>
+        <button class="tab-btn" data-tab="profile">Profile</button>
+      </nav>
+    </header>
+
+    <main class="content">
+      <div id="status"></div>
+
+      <section id="postingsTab" class="tab-panel">
+        <div class="filters">
+          <div class="row filters-row">
+            <input id="filterCompany" placeholder="Company" />
+            <input id="filterKeyword" placeholder="Keyword" />
+            <select id="filterKeywordScope">
+              <option value="title">Title only</option>
+              <option value="all">Title + JD text</option>
+            </select>
+            <input id="filterLocation" placeholder="Location" />
+            <select id="filterWorkplaceType">
+              <option value="">Any workplace type</option>
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">Onsite</option>
+            </select>
+            <label class="checkbox-label"><input type="checkbox" id="filterLocationMatch" /> Matches my location</label>
+          </div>
+          <div class="row filters-row">
+            <input id="filterCompMin" type="number" placeholder="Min comp" class="input-narrow" />
+            <label class="checkbox-label"><input type="checkbox" id="filterHasComp" /> Has comp data</label>
+            <select id="filterSource">
+              <option value="">Any source</option>
+              <option value="manual_capture">Self-imported</option>
+              <option value="greenhouse_api">Greenhouse</option>
+              <option value="lever_api">Lever</option>
+              <option value="scraped">Scraped</option>
+            </select>
+            <label class="checkbox-label"><input type="checkbox" id="filterMineOnly" /> Mine only</label>
+            <input id="filterDepartment" placeholder="Department" />
+            <label class="checkbox-label">Posted after <input type="date" id="filterPostedAfter" /></label>
+            <label class="checkbox-label" title="When this app first ingested the role -- use it to scope to what a recent crawl/scrape brought in">Added to my list after <input type="date" id="filterFirstSeenAfter" /></label>
+          </div>
+          <div class="row filters-row">
+            <div id="filterStage3Verdict"></div>
+            <div id="filterStage2Result"></div>
+            <label class="checkbox-label"><input type="checkbox" id="filterStarred" /> Starred only</label>
+            <label class="checkbox-label"><input type="checkbox" id="filterOpenOnly" checked /> Open only</label>
+            <label class="checkbox-label"><input type="checkbox" id="filterIncludeDismissed" /> Include dismissed</label>
+          </div>
+          <div class="row filters-row">
+            <label class="checkbox-label">
+              Sort
+              <select id="filterSort">
+                <option value="recent">Recently seen</option>
+                <option value="posted">Posted date</option>
+                <option value="fit">Fit</option>
+                <option value="comp">Compensation</option>
+                <option value="relevance">Relevance</option>
+              </select>
+            </label>
+            <button id="applyFilters" class="btn-primary">Filter</button>
+          </div>
+        </div>
+        <div class="row postings-toolbar">
+          <div id="postingsCount" class="subtitle"></div>
+        </div>
+        <div id="spendSummary" class="card spend-summary"></div>
+        <div class="funnel">
+          <div class="funnel-step">
+            <button id="previewStage2Btn" class="btn-secondary">Preview Stage 2 triage for these postings</button>
+            <div id="stage2PreviewResult" class="verdict-line" hidden></div>
+            <button id="submitStage2Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 2 batch</button>
+          </div>
+          <div class="funnel-step">
+            <button id="previewStage3Btn" class="btn-secondary">Preview Stage 3 analysis for these postings</button>
+            <div id="stage3PreviewResult" class="verdict-line" hidden></div>
+            <button id="submitStage3Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 3 batch</button>
+          </div>
+        </div>
+        <div id="pendingBatches" class="list"></div>
+        <div id="survivorsPrompt"></div>
+        <div id="lastAppliedResults" class="list"></div>
+        <div class="postings-split">
+          <div id="postingsList" class="list postings-list-pane"></div>
+          <div id="postingDetail" class="posting-detail-pane"></div>
+        </div>
+      </section>
+
+      <section id="applicationsTab" class="tab-panel" hidden>
+        <div class="filters row">
+          <select id="applicationStatusFilter">
+            <option value="">All statuses</option>
+            <option value="saved">saved</option>
+            <option value="applied">applied</option>
+            <option value="screening">screening</option>
+            <option value="interview">interview</option>
+            <option value="rejected">rejected</option>
+            <option value="skipped">skipped</option>
+          </select>
+          <select id="applicationSort">
+            <option value="updated">Recently updated</option>
+            <option value="follow_up">Follow-up due</option>
+          </select>
+          <button id="applyApplicationFilter" class="btn-primary">Filter</button>
+          <button id="exportApplicationsCsv" class="btn-secondary">Export CSV</button>
+        </div>
+        <div id="applicationsList" class="list"></div>
+      </section>
+
+      <section id="roadmapTab" class="tab-panel" hidden>
+        <nav class="subtabs">
+          <button class="subtab-btn active" data-subtab="readiness">Readiness</button>
+          <button class="subtab-btn" data-subtab="skills">Skills in demand</button>
+          <button class="subtab-btn" data-subtab="plan">Plan</button>
+        </nav>
+
+        <div id="roadmapSubReadiness" class="subtab-panel">
+          <div class="readiness-columns">
+            <div class="readiness-column">
+              <div class="card-label">Apply now</div>
+              <div id="readinessApplyNow" class="list"></div>
+            </div>
+            <div class="readiness-column">
+              <div class="card-label">Solid match</div>
+              <div id="readinessSolidMatch" class="list"></div>
+            </div>
+            <div class="readiness-column">
+              <div class="card-label">Stretch</div>
+              <div id="readinessStretch" class="list"></div>
+            </div>
+            <div class="readiness-column">
+              <div class="card-label">Build toward</div>
+              <div id="readinessBuildToward" class="list"></div>
+            </div>
+          </div>
+
+          <div class="card-label roadmap-demand-label">What's blocking Apply now</div>
+          <div id="nearMissTrendsList" class="list"></div>
+        </div>
+
+        <div id="roadmapSubSkills" class="subtab-panel" hidden>
+          <div class="filters row">
+            <button id="judgeSkillsPreview" class="btn-secondary">Check these skills against my profile</button>
+            <button id="judgeSkillsRun" class="btn-primary" hidden>Run</button>
+            <button id="refreshSkillNames" class="btn-secondary">Re-extract skills for my picked roles</button>
+            <button id="reloadSkills" class="btn-secondary">Reload list</button>
+            <span id="judgeSkillsStatus" class="subtitle"></span>
+          </div>
+          <div id="marketDemandList" class="list"></div>
+        </div>
+
+        <div id="roadmapSubPlan" class="subtab-panel" hidden>
+          <div class="card-label">Roadmap items</div>
+          <div id="roadmapList" class="list"></div>
+          <div class="card-label roadmap-demand-label">Detect recurring gaps</div>
+          <div class="filters row roadmap-trends-filters">
+            <label class="checkbox-label">Threshold <input type="number" id="trendThreshold" value="3" min="1" class="input-narrow" /></label>
+            <button id="detectTrends" class="btn-primary">Detect trends</button>
+          </div>
+          <div id="trendsList" class="list"></div>
+        </div>
+      </section>
+
+      <section id="companiesTab" class="tab-panel" hidden>
+        <div class="filters row">
+          <input id="companyName" placeholder="Company name" />
+          <input id="companyCareersUrl" placeholder="Careers URL" class="company-url-input" />
+          <select id="companyAtsType">
+            <option value="">Scraper (no known ATS)</option>
+            <option value="greenhouse">Greenhouse</option>
+            <option value="lever">Lever</option>
+            <option value="ashby">Ashby</option>
+          </select>
+          <button id="addCompanyBtn" class="btn-primary">Add company</button>
+          <button id="refreshAllCompaniesBtn" class="btn-secondary">Refresh all</button>
+        </div>
+        <div id="refreshAllResults" class="list"></div>
+        <div id="companiesList" class="list"></div>
+      </section>
+
+      <section id="profileTab" class="tab-panel" hidden>
+        <div class="row profile-toolbar">
+          <button id="profileEditBtn" class="btn-secondary">Edit profile</button>
+          <button id="profileChatBtn" class="btn-secondary">Update via chat</button>
+        </div>
+        <div id="profileCurrent" class="card"></div>
+
+        <div id="profileChatPanel" class="card" hidden>
+          <div class="card-label">Update via chat</div>
+          <div id="profileChatMessages" class="chat-messages"></div>
+          <textarea id="profileChatInput" class="chat-input" rows="3" placeholder="Describe your background, or attach a resume below..."></textarea>
+          <div class="row">
+            <button id="profileChatAttachBtn" class="btn-secondary">Attach resume (PDF/DOCX)</button>
+            <button id="profileChatSendBtn" class="btn-secondary">Send</button>
+            <button id="profileChatStartOverBtn" class="btn-secondary">Start over</button>
+            <button id="profileChatCloseBtn" class="btn-secondary">Close</button>
+          </div>
+        </div>
+
+        <div id="profileEditForm" hidden>
+          <div class="detail-section">
+            <div class="card-label">Experience</div>
+            <div id="editExperience"></div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Projects</div>
+            <div id="editProjects"></div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Skills -- core (full weight)</div>
+            <div id="editSkillsCore"></div>
+            <div class="card-label profile-field-label">Skills -- developing (partial weight)</div>
+            <div id="editSkillsDeveloping"></div>
+            <div class="card-label profile-field-label">Skills -- coursework (low weight)</div>
+            <div id="editSkillsCoursework"></div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Credentials -- education</div>
+            <div id="editEducation"></div>
+            <div class="card-label profile-field-label">Credentials -- OSS contributions</div>
+            <div id="editOssContributions"></div>
+            <div class="card-label profile-field-label">Credentials -- publications</div>
+            <div id="editPublications"></div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Fit criteria</div>
+            <label class="profile-field-label">Skip patterns</label>
+            <div id="editSkipPatterns"></div>
+            <label class="profile-field-label">Target signals</label>
+            <div id="editTargetSignals"></div>
+            <div class="row profile-field-label">
+              <label>Seniority floor <input id="editSeniorityFloor" type="text" /></label>
+              <label>Seniority ceiling <input id="editSeniorityCeiling" type="text" /></label>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Location preferences</div>
+            <label class="profile-field-label">Cities (match)</label>
+            <div id="editLocCities"></div>
+            <label class="profile-field-label">Countries (match)</label>
+            <div id="editLocCountries"></div>
+            <label class="profile-field-label">Exclude cities</label>
+            <div id="editLocExcludeCities"></div>
+            <label class="profile-field-label">Exclude countries</label>
+            <div id="editLocExcludeCountries"></div>
+            <div class="row profile-field-label">
+              <label class="checkbox-label"><input type="checkbox" id="editLocRemoteOk" /> Remote OK</label>
+              <label class="checkbox-label"><input type="checkbox" id="editLocHybridOk" /> Hybrid OK</label>
+              <label class="checkbox-label"><input type="checkbox" id="editLocOnsiteOk" /> Onsite OK</label>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="card-label">Changelog (required)</div>
+            <textarea id="editChangelog" class="note-box" placeholder="What changed and why..."></textarea>
+            <div class="row profile-edit-actions">
+              <button id="profileSaveBtn" class="btn-primary">Save</button>
+              <button id="profileCancelBtn" class="btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-label profile-versions-label">Version history</div>
+        <div id="profileVersions" class="list"></div>
+      </section>
+    </main>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,66 @@
+[project]
+name = "argus"
+version = "0.1.0"
+description = "Local-first job discovery and fit analysis"
+requires-python = ">=3.12"
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+mypy = "*"
+
+
+
+[tool.poetry.group.research.dependencies]
+ranx = "^0.3.21"
+bm25s = "^0.3.13"
+
+[tool.poetry.dependencies]
+fastapi = "^0.141.1"
+uvicorn = {extras = ["standard"], version = "^0.52.4"}
+sqlalchemy = "^2.0.52"
+alembic = "^1.19.1"
+psycopg = {extras = ["binary", "pool"], version = "^3.3.4"}
+pydantic = "^2.13.4"
+pydantic-settings = "^2.15.0"
+httpx = "^0.28.1"
+mcp = {extras = ["cli"], version = "^2.0.0"}
+pyyaml = "^6.0.3"
+anthropic = "^1.6.0"
+beautifulsoup4 = "^4.15.0"
+lxml = "^6.1.3"
+numpy = "^2.5.3"
+pypdf = "^6.19.0"
+python-docx = "^1.2.0"
+scipy = "^1.18.1"
+bm25s = "^0.3.14"
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["native/build*", "native/rust"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+ignore = [
+    "B008",  # FastAPI's Depends(...) in default arguments is the framework's idiom
+    "B905",  # zip() without strict=: the zipped inputs are built together and always equal length
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app/models/*" = ["F821"]  # SQLAlchemy relationship() annotations are string forward references
+# One-off measurement scripts: terse style is fine (single-letter loop variables, ;-joined timings).
+"research/*" = ["E741", "E702", "E731", "E402", "B905"]
+"native/bench/*" = ["E741", "E702", "E731", "E402", "B905"]
+
+[tool.pytest.ini_options]
+# Only the app's own tests. Without this pytest also collects experiment scripts and the third-party
+# sources CMake fetches into native/build*/.
+testpaths = ["tests"]

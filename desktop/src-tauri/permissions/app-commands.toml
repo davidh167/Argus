@@ -1,0 +1,220 @@
+# Permission definitions for this app's own commands (defined directly in
+# src/lib.rs, not a separate plugin). Tauri v2 only auto-generates
+# allow-/deny- permissions for PLUGIN build scripts; a plain app crate's
+# commands need to be declared here by hand, then referenced by identifier
+# in capabilities/default.json.
+
+[[permission]]
+identifier = "allow-list-postings"
+description = "Allows listing postings"
+commands.allow = ["list_postings"]
+
+[[permission]]
+identifier = "allow-get-posting"
+description = "Allows fetching one posting's detail"
+commands.allow = ["get_posting"]
+
+[[permission]]
+identifier = "allow-set-posting-note"
+description = "Allows setting or clearing a posting's note"
+commands.allow = ["set_posting_note"]
+
+[[permission]]
+identifier = "allow-similar-postings"
+description = "Allows fetching a posting's similar roles"
+commands.allow = ["similar_postings"]
+
+[[permission]]
+identifier = "allow-hydrate-postings"
+description = "Allows fetching full detail pages for scraped postings"
+commands.allow = ["hydrate_postings"]
+
+[[permission]]
+identifier = "allow-star-posting"
+description = "Allows starring a posting"
+commands.allow = ["star_posting"]
+
+[[permission]]
+identifier = "allow-unstar-posting"
+description = "Allows unstarring a posting"
+commands.allow = ["unstar_posting"]
+
+[[permission]]
+identifier = "allow-dismiss-posting"
+description = "Allows dismissing a posting"
+commands.allow = ["dismiss_posting"]
+
+[[permission]]
+identifier = "allow-undismiss-posting"
+description = "Allows undismissing a posting"
+commands.allow = ["undismiss_posting"]
+
+[[permission]]
+identifier = "allow-analyze-posting"
+description = "Allows triggering Stage 3 fit analysis for a posting"
+commands.allow = ["analyze_posting"]
+
+[[permission]]
+identifier = "allow-submit-stage2-batch"
+description = "Allows submitting a Stage 2 triage batch"
+commands.allow = ["submit_stage2_batch"]
+
+[[permission]]
+identifier = "allow-submit-stage3-batch"
+description = "Allows submitting a Stage 3 fit-analysis batch"
+commands.allow = ["submit_stage3_batch"]
+
+[[permission]]
+identifier = "allow-triage-pending-preview"
+description = "Allows previewing a Stage 2 triage batch's count/cost before submitting"
+commands.allow = ["triage_pending_preview"]
+
+[[permission]]
+identifier = "allow-analyze-pending-preview"
+description = "Allows previewing a Stage 3 analysis batch's count/cost before submitting"
+commands.allow = ["analyze_pending_preview"]
+
+[[permission]]
+identifier = "allow-get-spend-summary"
+description = "Allows fetching the Stage 2/3 spend summary"
+commands.allow = ["get_spend_summary"]
+
+[[permission]]
+identifier = "allow-apply-stage3-batch"
+description = "Allows applying a Stage 3 batch's results"
+commands.allow = ["apply_stage3_batch"]
+
+[[permission]]
+identifier = "allow-apply-stage2-batch"
+description = "Allows applying a Stage 2 batch's results"
+commands.allow = ["apply_stage2_batch"]
+
+[[permission]]
+identifier = "allow-list-companies"
+description = "Allows listing tracked companies"
+commands.allow = ["list_companies"]
+
+[[permission]]
+identifier = "allow-create-company"
+description = "Allows adding a new company"
+commands.allow = ["create_company"]
+
+[[permission]]
+identifier = "allow-crawl-company"
+description = "Allows crawling a company's ATS job board"
+commands.allow = ["crawl_company"]
+
+[[permission]]
+identifier = "allow-scrape-company"
+description = "Allows scraping a company's careers page"
+commands.allow = ["scrape_company"]
+
+[[permission]]
+identifier = "allow-refresh-all-companies"
+description = "Allows crawling or scraping every enabled, configured company"
+commands.allow = ["refresh_all_companies"]
+
+[[permission]]
+identifier = "allow-list-batches"
+description = "Allows listing tracked batch submissions"
+commands.allow = ["list_batches"]
+
+[[permission]]
+identifier = "allow-get-application"
+description = "Allows fetching a posting's application status"
+commands.allow = ["get_application"]
+
+[[permission]]
+identifier = "allow-set-application-status"
+description = "Allows setting a posting's application status"
+commands.allow = ["set_application_status"]
+
+[[permission]]
+identifier = "allow-list-applications"
+description = "Allows listing applications"
+commands.allow = ["list_applications"]
+
+[[permission]]
+identifier = "allow-export-applications-csv"
+description = "Allows exporting applications as a CSV file"
+commands.allow = ["export_applications_csv"]
+
+[[permission]]
+identifier = "allow-get-current-profile"
+description = "Allows fetching the current profile snapshot"
+commands.allow = ["get_current_profile"]
+
+[[permission]]
+identifier = "allow-list-profile-versions"
+description = "Allows listing profile version history"
+commands.allow = ["list_profile_versions"]
+
+[[permission]]
+identifier = "allow-create-profile-version"
+description = "Allows creating a new profile version"
+commands.allow = ["create_profile_version"]
+
+[[permission]]
+identifier = "allow-profile-intake-chat"
+description = "Allows one turn of the profile-intake chat"
+commands.allow = ["profile_intake_chat"]
+
+[[permission]]
+identifier = "allow-parse-resume-file"
+description = "Allows uploading a resume file for text extraction"
+commands.allow = ["parse_resume_file"]
+
+[[permission]]
+identifier = "allow-get-intake-chat-history"
+description = "Allows reading the persisted profile-intake chat history"
+commands.allow = ["get_intake_chat_history"]
+
+[[permission]]
+identifier = "allow-clear-intake-chat-history"
+description = "Allows clearing the persisted profile-intake chat history"
+commands.allow = ["clear_intake_chat_history"]
+
+[[permission]]
+identifier = "allow-list-roadmap"
+description = "Allows listing skill roadmap items"
+commands.allow = ["list_roadmap"]
+
+[[permission]]
+identifier = "allow-detect-skill-trends"
+description = "Allows detecting skill trends"
+commands.allow = ["detect_skill_trends"]
+
+[[permission]]
+identifier = "allow-get-readiness-view"
+description = "Allows fetching the readiness view (apply now / stretch / build toward)"
+commands.allow = ["get_readiness_view"]
+
+[[permission]]
+identifier = "allow-get-market-demand"
+description = "Allows fetching the market demand table (have/developing/gap)"
+commands.allow = ["get_market_demand"]
+
+[[permission]]
+identifier = "allow-preview-skill-judgments"
+description = "Allows previewing the cost of judging skills against the profile"
+commands.allow = ["preview_skill_judgments"]
+
+[[permission]]
+identifier = "allow-judge-skills"
+description = "Allows judging market-demand skills against the profile (costs Sonnet calls)"
+commands.allow = ["judge_skills"]
+
+[[permission]]
+identifier = "allow-submit-key-skills-refresh"
+description = "Allows submitting a Stage 2 batch that re-extracts key skills for the interest set"
+commands.allow = ["submit_key_skills_refresh"]
+
+[[permission]]
+identifier = "allow-generate-roadmap-brief"
+description = "Allows generating a roadmap direction brief"
+commands.allow = ["generate_roadmap_brief"]
+
+[[permission]]
+identifier = "allow-update-roadmap-status"
+description = "Allows updating a roadmap item's status"
+commands.allow = ["update_roadmap_status"]

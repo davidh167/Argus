@@ -1,0 +1,32 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: argus
+          POSTGRES_PASSWORD: argus
+          POSTGRES_DB: argus
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U argus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://argus:argus@localhost:5432/argus
+      API_TOKEN: ci-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install poetry
+      - run: poetry install
+      - run: poetry run ruff check .
+      - run: poetry run pytest -q

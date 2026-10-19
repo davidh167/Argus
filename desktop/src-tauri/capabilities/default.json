@@ -1,0 +1,64 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://*"
+        }
+      ]
+    },
+    "dialog:allow-save",
+    "dialog:allow-open",
+    "allow-list-postings",
+    "allow-get-posting",
+    "allow-set-posting-note",
+    "allow-similar-postings",
+    "allow-hydrate-postings",
+    "allow-star-posting",
+    "allow-unstar-posting",
+    "allow-dismiss-posting",
+    "allow-undismiss-posting",
+    "allow-analyze-posting",
+    "allow-submit-stage2-batch",
+    "allow-submit-stage3-batch",
+    "allow-triage-pending-preview",
+    "allow-analyze-pending-preview",
+    "allow-get-spend-summary",
+    "allow-apply-stage3-batch",
+    "allow-apply-stage2-batch",
+    "allow-list-batches",
+    "allow-list-companies",
+    "allow-create-company",
+    "allow-crawl-company",
+    "allow-scrape-company",
+    "allow-refresh-all-companies",
+    "allow-get-application",
+    "allow-set-application-status",
+    "allow-list-applications",
+    "allow-export-applications-csv",
+    "allow-get-current-profile",
+    "allow-list-profile-versions",
+    "allow-create-profile-version",
+    "allow-profile-intake-chat",
+    "allow-parse-resume-file",
+    "allow-get-intake-chat-history",
+    "allow-clear-intake-chat-history",
+    "allow-list-roadmap",
+    "allow-detect-skill-trends",
+    "allow-get-readiness-view",
+    "allow-get-market-demand",
+    "allow-preview-skill-judgments",
+    "allow-judge-skills",
+    "allow-submit-key-skills-refresh",
+    "allow-generate-roadmap-brief",
+    "allow-update-roadmap-status"
+  ]
+}

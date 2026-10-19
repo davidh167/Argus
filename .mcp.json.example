@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "argus": {
+      "type": "stdio",
+      "command": "/absolute/path/to/argus/.venv/bin/python",
+      "args": ["/absolute/path/to/argus/mcp_server.py"],
+      "env": {}
+    }
+  }
+}

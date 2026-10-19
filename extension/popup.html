@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Argus Capture</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header><span class="dot"></span>Argus Capture</header>
+
+    <div class="content">
+      <div id="loadingView"><span class="spinner"></span>Reading page...</div>
+
+      <div id="captureView" hidden>
+        <label for="company">Company</label>
+        <input id="company" />
+        <label for="title">Title</label>
+        <input id="title" />
+        <label for="location">Location (optional)</label>
+        <input id="location" placeholder="e.g. San Francisco, CA" />
+        <button id="captureBtn" class="btn-primary" disabled>Capture</button>
+      </div>
+
+      <div id="existingView" hidden>
+        <div class="posting-header">
+          <h2 id="postingTitle"></h2>
+          <div id="postingCompany" class="subtitle"></div>
+          <div id="postingMeta" class="badge-row"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Fit verdict</div>
+          <div id="verdictInfo"></div>
+        </div>
+
+        <button id="starBtn" class="btn-star"></button>
+
+        <div class="card">
+          <div class="card-label">Application status</div>
+          <div class="row">
+            <select id="statusSelect">
+              <option value="">-- not tracked --</option>
+              <option value="saved">saved</option>
+              <option value="applied">applied</option>
+              <option value="screening">screening</option>
+              <option value="interview">interview</option>
+              <option value="rejected">rejected</option>
+              <option value="skipped">skipped</option>
+            </select>
+            <button id="updateStatusBtn" class="btn-secondary">Update</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="status"></div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

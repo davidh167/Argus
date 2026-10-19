@@ -1,0 +1,108 @@
+# This is a TEMPLATE. Copy it to profile_seed.local.yaml (gitignored --
+# your real data never gets committed) and fill in your own information.
+# See the quick start in README.md for the full workflow.
+#
+# This file's structure is validated against app/schemas/profile.py's
+# ProfileSnapshotData on seed -- if you add/rename a field it doesn't
+# recognize, scripts/seed_profile.py will fail loudly with a clear error
+# rather than silently storing something malformed. That's deliberate;
+# fix the YAML to match the schema rather than working around the error.
+#
+# Everything below is scored by the LLM stages (especially Stage 3's fit
+# analysis) using the weight hierarchy documented in
+# app/services/stage3.py's SYSTEM_PROMPT: skills.core gets full weight,
+# skills.developing gets partial weight, skills.coursework gets low
+# weight, and anything you don't list is treated as a real gap with no
+# weight. Be honest here rather than aspirational -- the whole point of
+# the tiered weighting is to distinguish "I've shipped this in production"
+# from "I've taken a class on this."
+
+changelog: "v1 -- initial profile"
+
+# One entry per job/internship/contract role. Most recent/relevant first
+# isn't required (nothing orders on this), but keeping it recent-first
+# makes the file easier for you to scan.
+experience:
+  - company: "Your Company Name"
+    title: "Your Title"
+    date_range: "Month Year -- Month Year (or 'Present')"
+    signals:
+      # Short, concrete, ideally-quantified bullets -- what you actually
+      # built/shipped/improved, not a generic job description.
+      - "e.g. reduced X by Y% via Z"
+      - "e.g. built a pipeline that processes N items/second"
+    weight: high # high | medium | low -- how central this role is to your target roles
+
+# One entry per project worth surfacing (thesis, side projects, open
+# source, capstones). stack matters a lot -- Stage 3 checks it directly
+# against each JD's requirements, so list actual technologies used, not
+# just "Python" if you also used specific frameworks/libraries.
+projects:
+  - name: "Project Name"
+    description: >
+      What it does, in 2-4 sentences. Be specific about the architecture
+      and your role in it, not just the elevator pitch.
+    stack:
+      - "e.g. FastAPI"
+      - "e.g. PostgreSQL"
+    key_metrics:
+      - "e.g. sub-200ms p99 latency"
+    visibility: private # private | public | deployed
+    weight: medium # high | medium | low
+
+skills:
+  # Demonstrated in production or a substantial project -- full weight in
+  # Stage 3's fit analysis.
+  core:
+    - "Python"
+  # In progress, has some supporting artifacts, not yet production-proven --
+  # partial weight. See the skill roadmap feature (app/services/roadmap.py)
+  # for a way to track and grow this list over time from real job-market
+  # signal.
+  developing: []
+  # Formally learned (coursework, tutorials) but not demonstrated in
+  # practice -- low weight.
+  coursework: []
+
+credentials:
+  education:
+    - "Degree, School (completed Month Year)"
+  # Real, verifiable open-source contributions -- type is a hint for your
+  # own record-keeping, not enforced against anything external.
+  oss_contributions: []
+  # oss_contributions:
+  #   - repo: "owner/repo"
+  #     type: feature # docs | bug_fix | feature
+  #     merged: false
+  #     description: "What the contribution does."
+  #     relevance: "Why it's relevant to your target roles."
+  publications: []
+
+criteria:
+  # Title/JD signals that should route a posting toward skip -- see
+  # app/services/stage1.py (title-only, word-boundary matched) and Stage
+  # 2's JD-content triage for how these get used.
+  skip_patterns:
+    - "e.g. customer-facing"
+  # Positive signals used for classical-NLP relevance ranking (see
+  # app/services/relevance.py) -- what you're actually looking for.
+  target_signals:
+    - "e.g. backend engineering"
+  # Used by "matches my location" filtering/sorting (app/utils/location.py).
+  # cities/countries are plain substrings matched against a posting's
+  # locations -- no geocoding, so "San Francisco" matches "San Francisco,
+  # CA" but not "Bay Area". Leave a list empty for "no constraint" (not
+  # "matches everything"). The *_ok flags gate whether a hybrid/onsite
+  # posting counts even if its city matches -- they don't affect remote.
+  # exclude_cities/exclude_countries are a hard "no": an exclusion match
+  # always wins over any positive match, regardless of workplace type.
+  location_prefs:
+    cities: ["Your City", "Another City You'd Consider"]
+    countries: []
+    exclude_cities: []
+    exclude_countries: []
+    remote_ok: true
+    hybrid_ok: true
+    onsite_ok: true
+  seniority_floor: "e.g. ~2 years experience"
+  seniority_ceiling: "e.g. mid-level IC"

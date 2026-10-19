@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.DS_Store
+
+# Personal documents (resume, etc.) -- real PII, shouldn't enter git history
+*.pdf
+
+# Your real profile -- profile_seed.yaml (tracked) is a blank template;
+# your actual filled-in data goes here instead. See README for setup.
+profile_seed.local.yaml
+
+# Local-only notes and machine-specific config
+docs/
+.mcp.json
+
+# Derived research data (personal postings and labels), regenerable
+research/*/data/
+native/build/
+native/build-*/
+native/rust/*/target/
