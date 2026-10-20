@@ -17,7 +17,6 @@ mypy = "*"
 
 [tool.poetry.group.research.dependencies]
 ranx = "^0.3.21"
-bm25s = "^0.3.13"
 
 [tool.poetry.dependencies]
 fastapi = "^0.141.1"
