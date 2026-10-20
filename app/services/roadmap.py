@@ -559,8 +559,10 @@ def readiness_view(db: Session) -> ReadinessView:
        the profile), which a short gap list doesn't capture.
     3. Stretch: Strong/Moderate/Weak Fit with <= STRETCH_HARD_GAP_CAP hard
        gaps (and > SOLID_MATCH_HARD_GAP_CAP) -- a couple of genuinely new
-       skills to pick up. Both bucket caps apply regardless of
-       seniority_match (see SOLID_MATCH_HARD_GAP_CAP's comment for why --
+       skills to pick up. Solid match and Stretch both exclude seniority_match=No
+       (a role past the candidate's range isn't a skills gap to close); Borderline
+       is allowed. Both gap caps apply regardless of Borderline vs Yes (see
+       SOLID_MATCH_HARD_GAP_CAP's comment for why --
        this was originally narrower and buggy: Strong Fit wasn't eligible
        for this tier at all, and seniority_match=Borderline used to bypass
        the gap cap entirely).
@@ -653,13 +655,20 @@ def readiness_view(db: Session) -> ReadinessView:
                 **extra,
             )
 
+        too_senior = seniority == "No"
+
         if verdict_label in ("Strong Fit", "Moderate Fit") and seniority == "Yes" and not hard_gaps:
             apply_now.append(make_entry())
-        elif verdict_label in ("Strong Fit", "Moderate Fit") and n_gaps <= SOLID_MATCH_HARD_GAP_CAP:
+        elif (
+            verdict_label in ("Strong Fit", "Moderate Fit")
+            and n_gaps <= SOLID_MATCH_HARD_GAP_CAP
+            and not too_senior
+        ):
             solid_match.append(make_entry())
         elif (
             verdict_label in ("Strong Fit", "Moderate Fit", "Weak Fit")
             and n_gaps <= STRETCH_HARD_GAP_CAP
+            and not too_senior
         ):
             stretch.append(make_entry())
         elif verdict_label == "Weak Fit":

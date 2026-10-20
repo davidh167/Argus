@@ -520,6 +520,39 @@ def test_readiness_view_stretch_borderline_seniority_no_longer_bypasses_cap(db):
     assert beyond_cap.id not in _all_bucket_ids(view)
 
 
+def test_readiness_view_seniority_no_excluded_from_solid_match_and_stretch(db):
+    # A role past the candidate's seniority range is not a skills gap to close, so it must not appear
+    # as Solid match or Stretch however few hard gaps Stage 3 listed.
+    solid_candidate = _posting_with_stage3(
+        db,
+        "TooSeniorSolid",
+        "https://tooseniorsolid.example.com/1",
+        verdict_label="Moderate Fit",
+        seniority_match="No",
+        hard_gaps=["Node.js"],
+    )
+    stretch_candidate = _posting_with_stage3(
+        db,
+        "TooSeniorStretch",
+        "https://tooseniorstretch.example.com/1",
+        verdict_label="Moderate Fit",
+        seniority_match="No",
+        hard_gaps=["A", "B", "C", "D"],
+    )
+    borderline = _posting_with_stage3(
+        db,
+        "BorderlineSolid",
+        "https://borderlinesolid.example.com/1",
+        verdict_label="Moderate Fit",
+        seniority_match="Borderline",
+        hard_gaps=["Node.js"],
+    )
+    view = roadmap.readiness_view(db)
+    assert solid_candidate.id not in _all_bucket_ids(view)
+    assert stretch_candidate.id not in _all_bucket_ids(view)
+    assert borderline.id in {e.posting_id for e in view.solid_match}
+
+
 def test_readiness_view_skip_verdict_excluded_from_every_bucket(db):
     posting = _posting_with_stage3(
         db, "ReadyCo4", "https://readyco4.example.com/1", verdict_label="Skip"
