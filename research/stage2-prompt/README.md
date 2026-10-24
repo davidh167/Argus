@@ -36,5 +36,15 @@ runs differ on roughly a quarter of verdicts.
 
 Repeatability would improve with `temperature=0`. `claude-sonnet-5` (Stage 3) rejects sampling parameters,
 and the installed Anthropic SDK dropped the typed `temperature` argument, so for Stage 2 it would have to
-be sent as a raw request field. `build_requests.py --temp0 --tag NAME` builds a batch that does this to
-check whether the API accepts it; `compare_repeat.py` compares two such batches. Not applied to production.
+be sent as a raw request field (`build_requests.py --temp0 --tag NAME`, compared with `compare_repeat.py`).
+Claude Haiku 5.5 only accepts `temperature=1`, so on that model pinning is not possible and the question
+becomes whether the model is more consistent on its own.
+
+## Comparing models (Haiku 5.5)
+
+`build_requests.py --model claude-haiku-5-5 --tag h55a --submit` (and `--tag h55b`) re-runs the unchanged
+production prompt and tool on another model. `compare_models.py h55a h55b` then compares those runs with
+the stored production verdicts and with `batch_control.json`, using the production model's own
+run-to-run disagreement (stored vs control, above) as the yardstick. It also reports errored requests,
+refusals, outputs truncated at `max_tokens` (Haiku 5.5's tokenizer produces about 30% more tokens) and
+token use. At the Batch API rate a run costs under a cent of input tokens on Haiku 5.5.

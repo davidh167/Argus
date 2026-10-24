@@ -4,7 +4,10 @@ estimate and writes nothing to the API or DB. Submitting is a separate, explicit
 `--submit` that the user runs (it costs money); the batch id is saved to
 data/batch.json. Results are NOT applied to the DB -- compare.py reads them.
 
-Run: PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py [--control | --temp0] [--tag NAME] [--submit]"""
+Run: PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py [--control | --temp0 | --model ID --tag NAME] [--tag NAME] [--submit]
+
+--model ID re-runs the PRODUCTION prompt on another model (e.g. claude-haiku-5-5), which needs --tag so
+it cannot overwrite another batch's id. compare_models.py reads the results."""
 
 import json
 import sys
@@ -28,6 +31,13 @@ HERE = Path(__file__).parent
 CONTROL = "--control" in sys.argv  # re-run the PRODUCTION prompt
 TEMP0 = "--temp0" in sys.argv  # production prompt, with temperature=0 sent as a raw request field
 TAG = sys.argv[sys.argv.index("--tag") + 1] if "--tag" in sys.argv else None
+MODEL = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else None
+if MODEL and not TAG:
+    sys.exit("--model needs --tag NAME (it names the saved batch id)")
+# Input $/MTok at the Batch API rate (half the standard rate), and how many tokens the model's
+# tokenizer produces relative to the chars/4 estimate below (Haiku 5.5's is ~30% larger).
+BATCH_INPUT_RATE = {"claude-haiku-5-5": 0.05}.get(MODEL, 0.50)
+TOKEN_FACTOR = 1.3 if MODEL == "claude-haiku-5-5" else 1.0
 BATCH_FILE = (
     f"batch_{TAG}.json" if TAG else ("batch_control.json" if CONTROL or TEMP0 else "batch.json")
 )
@@ -45,6 +55,11 @@ with SessionLocal() as db:
     requests = []
     for p in picked:
         base = build_request(db, p)
+        if MODEL:  # production prompt and tool, different model: nothing else changes
+            params = dict(base["params"])
+            params["model"] = MODEL
+            requests.append(Request(custom_id=base["custom_id"], params=params))
+            continue
         if TEMP0:
             # anthropic 1.6's typed create() has no temperature argument, so this goes in the
             # batch request's raw params. Whether the API accepts it for Haiku 4.5 is exactly
@@ -66,10 +81,11 @@ with SessionLocal() as db:
 chars = sum(
     len(r["params"]["system"]) + len(r["params"]["messages"][0]["content"]) for r in requests
 )
-est_tokens = chars / 4
+est_tokens = chars / 4 * TOKEN_FACTOR
 print(
     f"{len(requests)} requests; ~{est_tokens:,.0f} input tokens; "
-    f"~${est_tokens / 1e6 * 0.50:.2f} input at Haiku batch rate (estimate, output extra but small)"
+    f"~${est_tokens / 1e6 * BATCH_INPUT_RATE:.3f} input at the batch rate for {MODEL or 'the production model'} "
+    "(estimate, output extra but small)"
 )
 
 if "--submit" in sys.argv:
