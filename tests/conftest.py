@@ -17,6 +17,34 @@ from app.config import settings
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Stage 1 title phrases now live in the profile. Tests that capture titles like "ML Engineer" put these
+# in their snapshot's criteria so Stage 1 routes them as it did when the lists were built in.
+TITLE_RULES = {
+    "title_fast_track": [
+        "research engineer",
+        "ml engineer",
+        "nlp engineer",
+        "ai engineer",
+        "machine learning",
+        "knowledge graph",
+        "knowledge engineer",
+        "knowledge base",
+        "retrieval",
+        "llm",
+        "language model",
+    ],
+    "title_skip": [
+        "solutions engineer",
+        "account executive",
+        "account manager",
+        "sales engineer",
+        "developer advocate",
+        "devrel",
+        "site reliability engineer",
+        "data center",
+    ],
+}
+
 
 def pytest_configure(config):
     base = make_url(settings.database_url)

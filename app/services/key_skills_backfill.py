@@ -31,7 +31,7 @@ from app.models.verdict import Verdict
 from app.services import batches as batches_service
 from app.services import roadmap
 from app.services.postings import latest_verdict_id_subquery
-from app.services.stage2 import Stage2UnavailableError, parse_response
+from app.services.stage2 import Stage2OutputError, Stage2UnavailableError, parse_response
 from app.services.stage2_batch import _posting_id_from_custom_id, build_request
 
 logger = logging.getLogger(__name__)
@@ -149,7 +149,12 @@ def apply_backfill_results(db: Session, batch_id: str, replace_existing: bool = 
             skipped_stale += 1
             continue
 
-        _result, _reason, key_skills, _tokens = parse_response(item.result.message)
+        try:
+            _result, _reason, key_skills, _tokens = parse_response(item.result.message)
+        except Stage2OutputError as exc:
+            logger.error("Key-skills backfill item for posting_id=%s: %s", posting_id, exc)
+            errors += 1
+            continue
         verdict.stage2_key_skills = key_skills
         applied += 1
         posting_ids.append(posting_id)

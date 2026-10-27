@@ -73,6 +73,12 @@ class LocationPrefs(BaseModel):
 class Criteria(BaseModel):
     skip_patterns: list[str] = []
     target_signals: list[str] = []
+    # Stage 1 routes a posting on its title alone, before anything reads the job description. These
+    # are plain phrases (case-insensitive, whole words), not regexes: a title containing a
+    # title_skip phrase is skipped, one containing a title_fast_track phrase goes to the front of the
+    # queue, anything else is analyzed. Empty means Stage 1 skips and fast-tracks nothing.
+    title_fast_track: list[str] = []
+    title_skip: list[str] = []
     # Pydantic v2 ignores unknown keys by default (no extra="forbid" is set
     # anywhere in this schema), so a stored snapshot from BEFORE this typed
     # model existed -- the free-form {based_in, open_to, hard_no} shape --

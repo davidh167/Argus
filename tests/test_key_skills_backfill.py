@@ -10,6 +10,7 @@ from app.services import key_skills_backfill
 from app.services.postings import capture_posting
 from app.services.profile import create_profile_version
 from app.services.stage2 import Stage2UnavailableError
+from tests.conftest import TITLE_RULES
 
 EMPTY_SNAPSHOT = {
     "experience": [],
@@ -19,6 +20,7 @@ EMPTY_SNAPSHOT = {
     "criteria": {
         "skip_patterns": [],
         "target_signals": [],
+        **TITLE_RULES,
         "location_prefs": {},
         "seniority_floor": None,
         "seniority_ceiling": None,

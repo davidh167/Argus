@@ -24,9 +24,11 @@ from app.services import relevance
 from app.services.jd_sections import extract_jd_sections
 from app.services.postings import list_stage2_pending
 from app.services.stage2 import (
+    STAGE2_MAX_TOKENS,
     STAGE2_MODEL,
     STAGE2_TOOL,
     SYSTEM_PROMPT,
+    Stage2OutputError,
     Stage2UnavailableError,
     build_user_message,
     parse_response,
@@ -58,7 +60,7 @@ def build_request(db: Session, posting: Posting) -> Request:
         custom_id=_custom_id(posting.id),
         params=MessageCreateParamsNonStreaming(
             model=STAGE2_MODEL,
-            max_tokens=256,
+            max_tokens=STAGE2_MAX_TOKENS,
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -214,7 +216,13 @@ def apply_batch_results(db: Session, batch_id: str) -> dict:
             skipped_stale += 1
             continue
 
-        result, reason, key_skills, tokens = parse_response(outcome.message)
+        try:
+            result, reason, key_skills, tokens = parse_response(outcome.message)
+        except Stage2OutputError as exc:
+            # No verdict was written, so the posting stays pending and can be resubmitted.
+            logger.error("Stage 2 batch item for posting_id=%s: %s", posting_id, exc)
+            errors += 1
+            continue
         verdict.stage2_result = result
         verdict.stage2_reason = reason
         verdict.stage2_key_skills = key_skills

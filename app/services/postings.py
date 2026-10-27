@@ -424,8 +424,9 @@ def hydrate_scraped_postings(
 
 
 def write_stage1_verdict(db: Session, posting: Posting) -> Verdict:
-    stage1_result, stage1_reason = classify_title(posting.title)
     profile_version = profile_service.get_current_profile(db)
+    criteria = ProfileSnapshotData.model_validate(profile_version.snapshot).criteria
+    stage1_result, stage1_reason = classify_title(posting.title, criteria)
     verdict = Verdict(
         posting_id=posting.id,
         profile_version_id=profile_version.id,

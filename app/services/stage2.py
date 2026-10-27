@@ -8,7 +8,11 @@ from app.services.jd_sections import JDSections
 
 logger = logging.getLogger(__name__)
 
-STAGE2_MODEL = "claude-haiku-4-5-20251001"
+STAGE2_MODEL = "claude-haiku-5-5"
+# 256 truncated 19-29 of 67 Haiku 5.5 outputs in the model comparison (research/stage2-prompt): the
+# verdict, a reason and up to 12 skills run ~240 tokens on its tokenizer, and a truncated tool call is
+# missing required fields. 1024 truncated none.
+STAGE2_MAX_TOKENS = 1024
 
 MAX_KEY_SKILLS = 12
 
@@ -98,6 +102,12 @@ skills ("communication", "teamwork") and role titles.
 Call the stage2_triage tool exactly once with your verdict."""
 
 
+class Stage2OutputError(RuntimeError):
+    """The model returned no usable verdict: it declined the request (stop_reason "refusal") or ran
+    out of output tokens mid tool call (stop_reason "max_tokens", which leaves required fields
+    missing). Batch callers count and log it per item; the live path lets it propagate."""
+
+
 class Stage2UnavailableError(RuntimeError):
     """Raised only when no Anthropic API key is configured. Callers catch
     this specifically to distinguish 'not configured, skip silently' from a
@@ -158,6 +168,12 @@ def parse_response(response) -> tuple[str, str, list[str], int]:
     schema may not actually enforce maxItems (not expressed here at all,
     since some strict-mode implementations reject it), so the cap is
     stated in the prompt and enforced here rather than trusted blindly."""
+    if response.stop_reason in ("refusal", "max_tokens"):
+        details = getattr(response, "stop_details", None)
+        raise Stage2OutputError(
+            f"Stage 2 got stop_reason={response.stop_reason!r}"
+            + (f" ({getattr(details, 'category', None)})" if details else "")
+        )
     tool_use = next(b for b in response.content if b.type == "tool_use")
     tokens_used = response.usage.input_tokens + response.usage.output_tokens
     key_skills = tool_use.input["key_skills"][:MAX_KEY_SKILLS]
@@ -180,7 +196,7 @@ def triage(
     client = Anthropic(api_key=settings.anthropic_api_key)
     response = client.messages.create(
         model=STAGE2_MODEL,
-        max_tokens=256,
+        max_tokens=STAGE2_MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=[
             {

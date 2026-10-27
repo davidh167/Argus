@@ -303,6 +303,36 @@ def test_apply_batch_results_counts_errored_without_raising(db):
     assert result["posting_ids"] == [p1.id]
 
 
+def test_apply_batch_results_counts_a_refusal_as_an_error_and_leaves_the_posting_pending(db):
+    p1, _ = make_analyze_posting(db, "BatchCoRef1", "https://batchcoref1.example.com/1")
+    p2, v2 = make_analyze_posting(db, "BatchCoRef2", "https://batchcoref2.example.com/1")
+    refusal = MagicMock(
+        stop_reason="refusal",
+        stop_details=MagicMock(category="general_harms"),
+        content=[],
+        usage=MagicMock(input_tokens=10, output_tokens=0),
+    )
+    refused_item = MagicMock(
+        custom_id=f"posting-{p2.id}", result=MagicMock(type="succeeded", message=refusal)
+    )
+    items = [_fake_succeeded_item(f"posting-{p1.id}", "analyze", "ok"), refused_item]
+    with patch.object(stage2_batch.settings, "anthropic_api_key", "fake-key"):
+        with patch("app.services.stage2_batch.Anthropic") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.messages.batches.retrieve.return_value = MagicMock(
+                processing_status="ended"
+            )
+            mock_client.messages.batches.results.return_value = items
+            mock_client_cls.return_value = mock_client
+
+            result = stage2_batch.apply_batch_results(db, "msgbatch_refusal")
+
+    assert result["applied"] == 1
+    assert result["errors"] == 1
+    assert result["posting_ids"] == [p1.id]
+    assert v2.stage2_result is None  # no verdict written, so it can be resubmitted
+
+
 def test_apply_batch_results_still_applies_when_recrawl_created_a_same_shape_verdict(db):
     p1, verdict = make_analyze_posting(db, "BatchCo7", "https://batchco7.example.com/1")
     # A recrawl during the batch's flight time always appends a new verdict

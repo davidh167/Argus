@@ -9,7 +9,7 @@ Anthropic API key; your data stays on your machine.
 
 - **Collects postings** from Greenhouse, Lever and Ashby APIs, from a self-healing scraper for
   other careers pages, and from a Chrome extension that captures the page you are looking at.
-- **Filters in stages, cheapest first.** Regex title rules, then a small-model triage (Haiku),
+- **Filters in stages, cheapest first.** Title phrases from your profile, then a small-model triage (Haiku),
   then a structured fit analysis (Sonnet). Both LLM stages run through the Batch API and show a
   cost estimate before anything is submitted.
 - **Scores fit against a profile** (experience, projects, tiered skills, criteria). Profiles are
@@ -115,8 +115,9 @@ roles a user picked above a TF-IDF baseline, and how skill phrases should be clu
 
 ## Current limitations
 
-- The Stage 1-3 prompts and title rules are tuned for an ML/AI job search; making them field-agnostic is
-  planned but not done.
+- The prompts and title rules no longer assume a field, but they have only been exercised on one ML/AI
+  profile. Stage 1 does nothing until the profile lists title phrases (`title_fast_track`, `title_skip`),
+  and a role type the old prompt excluded by name now has to be in `skip_patterns`.
 - The desktop app and the native core are developed and tested on macOS (Apple silicon) only.
 - The native core is not wired into the desktop app yet; the backend can use it for embeddings.
 - Evaluations in `research/` come from one user's postings and choices, so sample sizes are small.

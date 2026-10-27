@@ -24,7 +24,7 @@ this file) -- persisting the conversation log is separate from that and
 does not itself change the profile.
 
 Deliberately field-agnostic: nothing here assumes what field the user works in.
-(The Stage 1 title rules elsewhere still assume an ML/AI job search.)
+(Stage 1 title rules live in the profile too: criteria.title_fast_track / title_skip.)
 """
 
 from anthropic import Anthropic
@@ -142,6 +142,8 @@ PROFILE_INTAKE_RESULT_TOOL = {
                         "properties": {
                             "skip_patterns": {"type": "array", "items": {"type": "string"}},
                             "target_signals": {"type": "array", "items": {"type": "string"}},
+                            "title_fast_track": {"type": "array", "items": {"type": "string"}},
+                            "title_skip": {"type": "array", "items": {"type": "string"}},
                             "location_prefs": {
                                 "type": "object",
                                 "properties": {
@@ -176,6 +178,8 @@ PROFILE_INTAKE_RESULT_TOOL = {
                         "required": [
                             "skip_patterns",
                             "target_signals",
+                            "title_fast_track",
+                            "title_skip",
                             "location_prefs",
                             "seniority_floor",
                             "seniority_ceiling",

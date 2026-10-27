@@ -79,11 +79,19 @@ credentials:
   publications: []
 
 criteria:
-  # Title/JD signals that should route a posting toward skip -- see
-  # app/services/stage1.py (title-only, word-boundary matched) and Stage
-  # 2's JD-content triage for how these get used.
+  # The CORE FOCUS of roles you want to avoid, in your own words. Stage 2 reads the job
+  # description and skips a role whose real focus matches one of these.
   skip_patterns:
     - "e.g. customer-facing"
+  # Stage 1 routes a posting on its TITLE alone, before anything reads the description. Plain
+  # phrases, case-insensitive, whole words (not regexes). A title containing a title_skip phrase is
+  # skipped; one containing a title_fast_track phrase goes to the front of the queue; anything else
+  # is analyzed. Leave both empty and Stage 1 skips and fast-tracks nothing (Stage 2 reads
+  # everything), which is the safe default.
+  title_fast_track:
+    - "e.g. backend engineer"
+  title_skip:
+    - "e.g. account executive"
   # Positive signals used for classical-NLP relevance ranking (see
   # app/services/relevance.py) -- what you're actually looking for.
   target_signals:

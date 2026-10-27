@@ -167,3 +167,21 @@ def test_prompt_and_tool_state_the_same_key_skills_cap_as_the_parser():
     assert f"up to {stage2.MAX_KEY_SKILLS} skills" in stage2.SYSTEM_PROMPT
     description = stage2.STAGE2_TOOL["input_schema"]["properties"]["key_skills"]["description"]
     assert f"Up to {stage2.MAX_KEY_SKILLS} skills" in description
+
+
+@pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])
+def test_parse_response_raises_when_the_model_gave_no_usable_verdict(stop_reason):
+    # A refusal has no tool call; a truncated one is missing required fields. Both must fail loudly
+    # as Stage2OutputError rather than as a StopIteration/KeyError.
+    response = MagicMock(
+        stop_reason=stop_reason,
+        stop_details=MagicMock(category="general_harms"),
+        content=[MagicMock(type="tool_use", input={"result": "analyze"})],
+        usage=MagicMock(input_tokens=100, output_tokens=20),
+    )
+    with pytest.raises(stage2.Stage2OutputError, match=stop_reason):
+        stage2.parse_response(response)
+
+
+def test_stage2_output_limit_leaves_room_for_the_verdict_reason_and_skills():
+    assert stage2.STAGE2_MAX_TOKENS >= 1024

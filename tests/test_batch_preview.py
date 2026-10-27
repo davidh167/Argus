@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db import engine
 from app.services import batch_preview
 from app.services.profile import create_profile_version
+from tests.conftest import TITLE_RULES
 from tests.test_stage2_batch import make_analyze_posting, make_unhydrated_scraped_posting
 
 EMPTY_SNAPSHOT = {
@@ -14,6 +15,7 @@ EMPTY_SNAPSHOT = {
     "criteria": {
         "skip_patterns": [],
         "target_signals": [],
+        **TITLE_RULES,
         "location_prefs": {},
         "seniority_floor": None,
         "seniority_ceiling": None,

@@ -101,6 +101,12 @@ function criteriaBlock(snapshot) {
   if (criteria.skip_patterns?.length) {
     parts.push(`<div class="verdict-line"><span class="stage">Skip patterns</span>${criteria.skip_patterns.join(", ")}</div>`);
   }
+  if (criteria.title_fast_track?.length) {
+    parts.push(`<div class="verdict-line"><span class="stage">Fast-track titles</span>${criteria.title_fast_track.join(", ")}</div>`);
+  }
+  if (criteria.title_skip?.length) {
+    parts.push(`<div class="verdict-line"><span class="stage">Skip titles</span>${criteria.title_skip.join(", ")}</div>`);
+  }
   const locParts = [];
   if (loc.cities?.length) locParts.push(`cities: ${loc.cities.join(", ")}`);
   if (loc.countries?.length) locParts.push(`countries: ${loc.countries.join(", ")}`);
@@ -171,6 +177,8 @@ function mountEditForm(snapshot) {
   mountTagList("editPublications", creds.publications);
   mountTagList("editSkipPatterns", criteria.skip_patterns);
   mountTagList("editTargetSignals", criteria.target_signals);
+  mountTagList("editTitleFastTrack", criteria.title_fast_track);
+  mountTagList("editTitleSkip", criteria.title_skip);
   document.getElementById("editSeniorityFloor").value = criteria.seniority_floor ?? "";
   document.getElementById("editSeniorityCeiling").value = criteria.seniority_ceiling ?? "";
   mountTagList("editLocCities", loc.cities);
@@ -200,6 +208,8 @@ function readEditFormSnapshot() {
     criteria: {
       skip_patterns: document.getElementById("editSkipPatterns").getValues(),
       target_signals: document.getElementById("editTargetSignals").getValues(),
+      title_fast_track: document.getElementById("editTitleFastTrack").getValues(),
+      title_skip: document.getElementById("editTitleSkip").getValues(),
       seniority_floor: document.getElementById("editSeniorityFloor").value.trim() || null,
       seniority_ceiling: document.getElementById("editSeniorityCeiling").value.trim() || null,
       location_prefs: {

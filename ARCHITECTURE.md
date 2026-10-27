@@ -35,7 +35,7 @@ Structured columns are JSONB rather than Postgres arrays.
 1. **Ingest.** Greenhouse/Lever/Ashby APIs, the scraper catalog (a CSS-selector strategy generated once
    per domain by an LLM, reused deterministically, regenerated once if validation fails), and manual
    capture. Closed postings are detected when they disappear from a crawl.
-2. **Stage 1: rules.** Title patterns classify a posting as fast-track, analyze or skip. Free.
+2. **Stage 1: rules.** Phrases from the profile (`criteria.title_skip`, `criteria.title_fast_track`) classify a posting by title as skip, fast-track or analyze. Free.
 3. **Stage 2: triage.** A small model reads the extracted JD sections against the profile criteria and
    returns fast-track, analyze or skip, plus up to 12 normalized key skills. Batch API.
 4. **Stage 3: fit analysis.** A larger model returns a structured verdict (fit, seniority, hard and soft

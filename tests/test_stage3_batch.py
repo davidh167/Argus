@@ -7,6 +7,7 @@ from app.db import engine
 from app.services import stage3_batch
 from app.services.postings import capture_posting
 from app.services.profile import create_profile_version
+from tests.conftest import TITLE_RULES
 
 EMPTY_SNAPSHOT = {
     "experience": [],
@@ -16,6 +17,7 @@ EMPTY_SNAPSHOT = {
     "criteria": {
         "skip_patterns": [],
         "target_signals": [],
+        **TITLE_RULES,
         "location_prefs": {},
         "seniority_floor": None,
         "seniority_ceiling": None,

@@ -27,6 +27,7 @@ from app.services.postings import (
     write_stage1_verdict,
 )
 from app.services.profile import create_profile_version
+from tests.conftest import TITLE_RULES
 
 EMPTY_SNAPSHOT = {
     "experience": [],
@@ -36,6 +37,7 @@ EMPTY_SNAPSHOT = {
     "criteria": {
         "skip_patterns": [],
         "target_signals": [],
+        **TITLE_RULES,
         "location_prefs": {},
         "seniority_floor": None,
         "seniority_ceiling": None,
