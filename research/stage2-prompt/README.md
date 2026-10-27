@@ -48,3 +48,15 @@ the stored production verdicts and with `batch_control.json`, using the producti
 run-to-run disagreement (stored vs control, above) as the yardstick. It also reports errored requests,
 refusals, outputs truncated at `max_tokens` (Haiku 5.5's tokenizer produces about 30% more tokens) and
 token use. At the Batch API rate a run costs under a cent of input tokens on Haiku 5.5.
+
+### Result: Haiku 5.5, and the field-neutral prompt (67 interest-set postings)
+
+- Haiku 5.5 is far more repeatable than Haiku 4.5: two identical runs differ on 1 to 2 of 67 verdicts,
+  against about a quarter for 4.5. At the production limit of `max_tokens=256` it truncates 19 to 29 of 67
+  outputs (every one missing a required field); at 1024 none are truncated. It disagrees with 4.5 on
+  roughly half the postings, mostly by skipping fewer and rarely choosing `fast_track`.
+- Removing the ML/AI wording from the Stage 2 prompt (deferring to the profile's `target_signals` and
+  `skip_patterns`) changed 14 of 67 verdicts on Haiku 5.5, against a noise floor of 1 to 2: skips fell from
+  20 to 10, almost all of them to `analyze`. Anything the old prompt excluded by name (cybersecurity,
+  sales-adjacent or forward-deployed roles) now has to be in the user's `skip_patterns`.
+

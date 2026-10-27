@@ -7,7 +7,8 @@ data/batch.json. Results are NOT applied to the DB -- compare.py reads them.
 Run: PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py [--control | --temp0 | --model ID --tag NAME] [--tag NAME] [--submit]
 
 --model ID re-runs the PRODUCTION prompt on another model (e.g. claude-haiku-5-5), which needs --tag so
-it cannot overwrite another batch's id. compare_models.py reads the results."""
+it cannot overwrite another batch's id; --max-tokens N overrides the production output limit (256) for
+that run. compare_models.py reads the results."""
 
 import json
 import sys
@@ -34,6 +35,7 @@ TAG = sys.argv[sys.argv.index("--tag") + 1] if "--tag" in sys.argv else None
 MODEL = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else None
 if MODEL and not TAG:
     sys.exit("--model needs --tag NAME (it names the saved batch id)")
+MAX_TOKENS = int(sys.argv[sys.argv.index("--max-tokens") + 1]) if "--max-tokens" in sys.argv else None
 # Input $/MTok at the Batch API rate (half the standard rate), and how many tokens the model's
 # tokenizer produces relative to the chars/4 estimate below (Haiku 5.5's is ~30% larger).
 BATCH_INPUT_RATE = {"claude-haiku-5-5": 0.05}.get(MODEL, 0.50)
@@ -58,6 +60,8 @@ with SessionLocal() as db:
         if MODEL:  # production prompt and tool, different model: nothing else changes
             params = dict(base["params"])
             params["model"] = MODEL
+            if MAX_TOKENS:
+                params["max_tokens"] = MAX_TOKENS
             requests.append(Request(custom_id=base["custom_id"], params=params))
             continue
         if TEMP0:

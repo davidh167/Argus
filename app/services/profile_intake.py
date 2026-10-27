@@ -24,7 +24,7 @@ this file) -- persisting the conversation log is separate from that and
 does not itself change the profile.
 
 Deliberately field-agnostic: nothing here assumes what field the user works in.
-(Stage 1/2/3 prompts elsewhere still assume an ML/AI job search.)
+(The Stage 1 title rules elsewhere still assume an ML/AI job search.)
 """
 
 from anthropic import Anthropic
