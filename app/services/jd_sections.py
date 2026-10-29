@@ -4,12 +4,21 @@ from dataclasses import dataclass
 # Longest/most-specific phrases first isn't required since we take the first
 # (leftmost) match per category, but keep phrases distinct across categories
 # so a generic one doesn't shadow a more specific one appearing earlier.
-SUMMARY_HEADERS = ["about the role", "about this role", "role summary", "about the team"]
+SUMMARY_HEADERS = [
+    "about the role",
+    "about this role",
+    "role summary",
+    "about the team",
+    "position summary",
+    "job summary",
+]
 RESPONSIBILITIES_HEADERS = [
     "what you'll do",
     "what you will do",
     "what you'll be doing",
     "responsibilities",
+    "essential duties",
+    "job duties",
 ]
 REQUIRED_HEADERS = [
     "minimum qualifications",
@@ -19,6 +28,7 @@ REQUIRED_HEADERS = [
     "who you are",
     "what you'll need",
     "what we're looking for",
+    "education and experience",
 ]
 PREFERRED_HEADERS = [
     "preferred qualifications",
