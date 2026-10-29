@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Text, case, cast, false, func, or_, select
+from sqlalchemy import ColumnElement, Text, case, cast, false, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.crawlers.fetch import FetchStrategy
@@ -449,7 +449,7 @@ def run_stage2_triage(db: Session, posting: Posting, verdict: Verdict) -> Verdic
     if verdict.stage1_result != "analyze" or verdict.stage2_result is not None:
         return verdict  # idempotent guard
 
-    profile_version = db.get(ProfileVersion, verdict.profile_version_id)
+    profile_version = db.get_one(ProfileVersion, verdict.profile_version_id)
     snapshot = ProfileSnapshotData.model_validate(profile_version.snapshot)
     sections = extract_jd_sections(posting.raw_jd_text or "")
 
@@ -817,7 +817,7 @@ def list_stage3_pending(
 
     Dismissed postings are excluded unconditionally, same as
     list_stage2_pending, even when posting_ids is given explicitly."""
-    condition = Verdict.stage3_result.is_(None)
+    condition: ColumnElement[bool] = Verdict.stage3_result.is_(None)
     if include_stale:
         current_profile_version_id = profile_service.get_current_profile(db).id
         condition = or_(

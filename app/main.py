@@ -10,7 +10,7 @@ from app.routers import applications, batches, companies, postings, profile, roa
 logger = logging.getLogger(__name__)
 
 
-async def anthropic_auth_error_handler(request: Request, exc: anthropic.AuthenticationError):
+async def anthropic_auth_error_handler(request: Request, exc: Exception):
     """Anthropic rejecting the configured key (revoked or expired) used to surface as an opaque
     500. Say what actually happened, and log it. 502 rather than 401 so it can't be mistaken for
     this API's own token check."""

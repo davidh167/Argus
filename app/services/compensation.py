@@ -145,8 +145,8 @@ def extract_compensation(text: str | None) -> CompExtraction | None:
             continue
         lo, hi = min(lo, hi), max(lo, hi)
         if ANNUAL_BOUNDS[0] <= lo and hi <= ANNUAL_BOUNDS[1]:
-            symbol = re.search(_CURRENCY_SYMBOL, m.group(0))
-            currency = _currency_for(symbol.group(0), None) if symbol else "USD"
+            symbol_match = re.search(_CURRENCY_SYMBOL, m.group(0))
+            currency = _currency_for(symbol_match.group(0), None) if symbol_match else "USD"
             matches.append((lo, hi, currency, re.sub(r"\s+", " ", m.group(0).strip())))
 
     if matches:

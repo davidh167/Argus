@@ -27,7 +27,10 @@ Deliberately field-agnostic: nothing here assumes what field the user works in.
 (Stage 1 title rules live in the profile too: criteria.title_fast_track / title_skip.)
 """
 
+from typing import Literal
+
 from anthropic import Anthropic
+from anthropic.types import MessageParam, ToolParam
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -40,7 +43,7 @@ PROFILE_INTAKE_MODEL = "claude-sonnet-5"
 
 _WEIGHT_ENUM = {"type": "string", "enum": ["high", "medium", "low"]}
 
-PROFILE_INTAKE_RESULT_TOOL = {
+PROFILE_INTAKE_RESULT_TOOL: ToolParam = {
     "name": "propose_profile_update",
     "description": (
         "Propose a full replacement profile snapshot once you have enough information "
@@ -264,7 +267,7 @@ def chat(
         raise Stage2UnavailableError("ANTHROPIC_API_KEY not configured")
     client = Anthropic(api_key=settings.anthropic_api_key)
 
-    messages = [{"role": m.role, "content": m.content} for m in message_history]
+    messages: list[MessageParam] = [{"role": m.role, "content": m.content} for m in message_history]
     messages.append(
         {
             "role": "user",
@@ -306,7 +309,9 @@ def list_messages(db: Session) -> list[ProfileIntakeMessage]:
     return list(db.scalars(select(ProfileIntakeMessage).order_by(ProfileIntakeMessage.id)))
 
 
-def append_message(db: Session, role: str, content: str) -> ProfileIntakeMessage:
+def append_message(
+    db: Session, role: Literal["user", "assistant"], content: str
+) -> ProfileIntakeMessage:
     message = ProfileIntakeMessage(role=role, content=content)
     db.add(message)
     db.flush()

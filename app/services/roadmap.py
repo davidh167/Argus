@@ -6,10 +6,11 @@ app/services/stage3.py's LLM integration pattern.
 """
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 from anthropic import Anthropic
+from anthropic.types import ToolParam
 from scipy.cluster.hierarchy import fcluster, linkage
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -90,7 +91,7 @@ STRETCH_HARD_GAP_CAP = 5
 # gaps like "C/C++" reach 0.76). See research/cluster-quality.
 EMBEDDING_SIMILARITY_THRESHOLD = 0.80
 
-ROADMAP_BRIEF_TOOL = {
+ROADMAP_BRIEF_TOOL: ToolParam = {
     "name": "generate_roadmap_brief",
     "description": "Record the direction brief for this candidate skill roadmap item.",
     "input_schema": {
@@ -493,7 +494,7 @@ def generate_roadmap_brief(
         tool_choice={"type": "tool", "name": "generate_roadmap_brief"},
     )
     tool_use = next(b for b in response.content if b.type == "tool_use")
-    brief = tool_use.input
+    brief = cast(dict, tool_use.input)
 
     roadmap = db.scalar(
         select(SkillRoadmap).where(SkillRoadmap.skill_or_language == skill_or_language)
@@ -603,8 +604,8 @@ def readiness_view(db: Session) -> ReadinessView:
     weak_fit_gaps: list[tuple[Posting, str]] = [
         (posting, text)
         for posting in postings
-        if posting.verdicts[0].stage3_result.get("verdict") == "Weak Fit"
-        for text in posting.verdicts[0].stage3_result.get("hard_gaps", [])
+        if _stage3_result(posting).get("verdict") == "Weak Fit"
+        for text in _stage3_result(posting).get("hard_gaps", [])
     ]
 
     gap_vectors: list[dict[str, float]] = []
@@ -621,7 +622,9 @@ def readiness_view(db: Session) -> ReadinessView:
         gap_vectors = vectors[: len(gap_texts)]
         roadmap_vectors = vectors[len(gap_texts) :]
 
-    def best_roadmap_match(posting_id: int) -> tuple[SkillRoadmap, str] | tuple[None, None]:
+    def best_roadmap_match(
+        posting_id: int,
+    ) -> tuple[SkillRoadmap, str | None] | tuple[None, None]:
         best_item, best_sim, best_gap = None, READINESS_GAP_SIMILARITY_THRESHOLD, None
         for i, (gap_posting, gap_text) in enumerate(weak_fit_gaps):
             if gap_posting.id != posting_id:
@@ -638,7 +641,7 @@ def readiness_view(db: Session) -> ReadinessView:
     build_toward: list[ReadinessEntry] = []
 
     for posting in postings:
-        result = posting.verdicts[0].stage3_result
+        result = _stage3_result(posting)
         verdict_label = result.get("verdict")
         seniority = result.get("seniority_match")
         hard_gaps = result.get("hard_gaps", [])
@@ -722,6 +725,12 @@ def interest_weights(db: Session, postings: list[Posting]) -> dict[int, float]:
     return weights
 
 
+def _stage3_result(posting: Posting) -> dict:
+    """The latest verdict's Stage 3 result; callers only pass postings already filtered to
+    those with one."""
+    return cast(dict, posting.verdicts[0].stage3_result)
+
+
 def _normalize_phrase(phrase: str) -> str:
     return " ".join(phrase.casefold().replace("-", " ").replace("_", " ").split())
 
@@ -751,7 +760,7 @@ def _cluster_demand_phrases(postings: list[Posting], weights: dict[int, float]) 
     phrases: dict[str, dict] = {}
     for posting in postings:
         in_interest = weights[posting.id] >= INTEREST_SET_MIN_WEIGHT
-        for skill in posting.verdicts[0].stage2_key_skills:
+        for skill in cast(list, posting.verdicts[0].stage2_key_skills):
             entry = phrases.setdefault(
                 _normalize_phrase(skill), {"texts": [], "postings": set(), "interest": False}
             )

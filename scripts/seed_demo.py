@@ -943,7 +943,7 @@ APPLICATIONS = {
 
 
 def _count(db: Session, model, *where) -> int:
-    return db.scalar(select(func.count()).select_from(model).where(*where))
+    return db.execute(select(func.count()).select_from(model).where(*where)).scalar_one()
 
 
 def seed(db: Session) -> dict:

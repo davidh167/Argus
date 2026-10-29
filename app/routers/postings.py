@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from datetime import date
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
@@ -171,6 +173,7 @@ def apply_triage_batch(batch_id: str, db: Session = Depends(get_db)):
     Safe to call repeatedly before the batch ends -- returns the current
     status with nothing applied."""
     submission = batches_service.get_batch_submission(db, batch_id)
+    apply_fn: Callable[..., dict]
     kind = submission.kind if submission is not None else None
     if kind == key_skills_backfill.KIND:
         apply_fn = key_skills_backfill.apply_backfill_results
@@ -413,7 +416,7 @@ def list_postings(
     relevance. X-Total-Count on the response reflects the filtered count
     before limit was applied, so a capped response is distinguishable
     from "that's really all of them"."""
-    filters = dict(
+    filters: dict[str, Any] = dict(
         company=company,
         starred=starred,
         url=url,

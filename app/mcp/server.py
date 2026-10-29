@@ -14,6 +14,7 @@ from app.schemas.application import ApplicationOut
 from app.schemas.posting import PostingDetail, PostingSummary
 from app.schemas.profile import ProfileSnapshot
 from app.schemas.roadmap import SkillRoadmapOut
+from app.schemas.verdict import VerdictOut, build_verdict_out
 from app.services import applications as applications_service
 from app.services import postings as postings_service
 from app.services import profile as profile_service
@@ -64,14 +65,10 @@ def _to_summary(posting) -> dict:
 
 def _to_detail(posting, db) -> dict:
     summary = _to_summary(posting)
-    latest_verdict = None
+    latest_verdict: VerdictOut | None = None
     if posting.verdicts:
-        from app.schemas.verdict import build_verdict_out
-
         current_profile_version_id = profile_service.get_current_profile(db).id
-        latest_verdict = build_verdict_out(
-            posting.verdicts[0], current_profile_version_id
-        ).model_dump(mode="json")
+        latest_verdict = build_verdict_out(posting.verdicts[0], current_profile_version_id)
     return PostingDetail(
         **summary,
         raw_jd_text=posting.raw_jd_text,

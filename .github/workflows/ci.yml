@@ -38,6 +38,7 @@ jobs:
       - run: poetry install
       - run: poetry run ruff check .
       - run: poetry run ruff format --check .
+      - run: poetry run mypy
       # Measured 84% locally; the floor sits a few points below so only a real drop fails CI.
       - run: poetry run pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
 

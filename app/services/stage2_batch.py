@@ -53,7 +53,7 @@ def build_request(db: Session, posting: Posting) -> Request:
     key_skills_backfill, which asks the identical question and only differs
     in what it writes back."""
     verdict = posting.verdicts[0]
-    profile_version = db.get(ProfileVersion, verdict.profile_version_id)
+    profile_version = db.get_one(ProfileVersion, verdict.profile_version_id)
     snapshot = ProfileSnapshotData.model_validate(profile_version.snapshot)
     sections = extract_jd_sections(posting.raw_jd_text or "")
     return Request(
@@ -198,7 +198,7 @@ def apply_batch_results(db: Session, batch_id: str) -> dict:
             continue
 
         outcome = item.result
-        if outcome.type in ("errored", "expired"):
+        if outcome.type != "succeeded":
             logger.error(
                 "Stage 2 batch item %s for posting_id=%s: %s",
                 outcome.type,

@@ -206,7 +206,7 @@ def apply_batch_results(db: Session, batch_id: str) -> dict:
             continue
 
         outcome = item.result
-        if outcome.type in ("errored", "expired"):
+        if outcome.type != "succeeded":
             logger.error(
                 "Stage 3 batch item %s for posting_id=%s: %s",
                 outcome.type,

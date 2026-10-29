@@ -47,9 +47,9 @@ def main() -> None:
             stmt = stmt.where(Company.name == args.company)
         candidates = list(db.scalars(stmt))
 
-        before_by_company = Counter()
-        after_by_company = Counter()
-        total_by_company = Counter()
+        before_by_company: Counter[str] = Counter()
+        after_by_company: Counter[str] = Counter()
+        total_by_company: Counter[str] = Counter()
 
         # Coverage denominator is every posting for the touched companies,
         # not just the candidates, so "before" reflects reality (including

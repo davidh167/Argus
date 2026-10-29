@@ -135,7 +135,7 @@ def apply_backfill_results(db: Session, batch_id: str, replace_existing: bool = 
     for item in client.messages.batches.results(batch_id):
         posting_id = _posting_id_from_custom_id(item.custom_id)
         posting = db.get(Posting, posting_id)
-        if posting is None or item.result.type in ("errored", "expired"):
+        if posting is None or item.result.type != "succeeded":
             logger.error(
                 "Key-skills backfill item for posting_id=%s failed: %s",
                 posting_id,

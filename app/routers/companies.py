@@ -9,6 +9,7 @@ from app.schemas.company import (
     CompanyCreate,
     CompanyOut,
     CrawlResult,
+    RefreshAllEntry,
     RefreshAllResult,
     ScrapeResult,
 )
@@ -88,7 +89,7 @@ def refresh_all(db: Session = Depends(get_db)):
     results = refresh_all_companies(db)
     relevance_service.rescore_all(db)
     db.commit()
-    return RefreshAllResult(results=results)
+    return RefreshAllResult(results=[RefreshAllEntry(**r) for r in results])
 
 
 @router.post("/{company_id}/crawl", response_model=CrawlResult)

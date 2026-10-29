@@ -8,6 +8,8 @@ relevance-based cap would pick. Never mutates anything, safe to call on
 every filter change.
 """
 
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.models.verdict import Verdict
@@ -70,7 +72,7 @@ def preview_stage3(
     include_stale: bool = False,
     include_unready: bool = False,
 ) -> dict:
-    kwargs = dict(
+    kwargs: dict[str, Any] = dict(
         company_id=company_id,
         posting_ids=posting_ids,
         include_stale=include_stale,

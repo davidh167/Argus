@@ -9,8 +9,11 @@ author, so read that as "viable", not "calibrated"). Prompt wording assumes no f
 Results are cached per (profile version, skill) in skill_judgments and
 consumed by roadmap.market_demand. Paid calls are user-triggered only."""
 
+from typing import cast
+
 import numpy as np
 from anthropic import Anthropic
+from anthropic.types import ToolParam
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,7 +32,7 @@ TOP_K_LEXICAL = 4
 DEFAULT_LIMIT = 30
 ESTIMATED_OUTPUT_TOKENS = 120
 
-JUDGE_TOOL = {
+JUDGE_TOOL: ToolParam = {
     "name": "record_skill_judgment",
     "description": "Record whether the candidate's profile demonstrates the skill.",
     "input_schema": {
@@ -176,7 +179,7 @@ def judge_pending(
             tools=[JUDGE_TOOL],
             tool_choice={"type": "tool", "name": JUDGE_TOOL["name"]},
         )
-        result = next(b for b in response.content if b.type == "tool_use").input
+        result = cast(dict, next(b for b in response.content if b.type == "tool_use").input)
         db.add(
             SkillJudgment(
                 profile_version_id=version_id,

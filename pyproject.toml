@@ -12,6 +12,7 @@ pytest = "*"
 pytest-cov = "*"
 ruff = "*"
 mypy = "*"
+types-pyyaml = "^6.0.12.20260906"
 
 
 
@@ -63,3 +64,12 @@ ignore = [
 # Only the app's own tests. Without this pytest also collects experiment scripts and the third-party
 # sources CMake fetches into native/build*/.
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app", "scripts"]
+
+# Third-party libraries that ship no type information.
+[[tool.mypy.overrides]]
+module = ["bm25s", "scipy.*"]
+ignore_missing_imports = true

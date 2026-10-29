@@ -84,3 +84,5 @@ def _embed_batch_with_retry(batch: list[str]) -> list[list[float]]:
             return resp.json()["embeddings"]
         if attempt == len(delays) - 1:
             resp.raise_for_status()
+    # raise_for_status() only raises on 4xx/5xx, so a non-200 2xx/3xx on the last attempt lands here.
+    raise RuntimeError(f"Ollama embeddings request ended with HTTP {resp.status_code}")

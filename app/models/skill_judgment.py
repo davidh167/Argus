@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import DateTime, ForeignKey, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -24,7 +25,7 @@ class SkillJudgment(Base):
     # roadmap._normalize_phrase(skill_label): case/hyphen-insensitive identity.
     skill_key: Mapped[str] = mapped_column(Text, nullable=False)
     skill_label: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)  # have|developing|gap
+    status: Mapped[Literal["have", "developing", "gap"]] = mapped_column(Text, nullable=False)
     # Text of the profile evidence items the model cited (empty for a gap).
     evidence: Mapped[list] = mapped_column(JSONB(none_as_null=True), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)

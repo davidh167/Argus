@@ -1,6 +1,7 @@
 import logging
 
 from anthropic import Anthropic
+from anthropic.types import ToolParam
 
 from app.config import settings
 from app.schemas.profile import Criteria
@@ -16,7 +17,7 @@ STAGE2_MAX_TOKENS = 1024
 
 MAX_KEY_SKILLS = 12
 
-STAGE2_TOOL = {
+STAGE2_TOOL: ToolParam = {
     "name": "stage2_triage",
     "description": "Record the Stage 2 triage verdict for this job posting.",
     "input_schema": {

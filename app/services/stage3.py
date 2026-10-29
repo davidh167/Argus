@@ -4,6 +4,7 @@ pattern -- see that file for the untrusted-content mitigation rationale.
 """
 
 from anthropic import Anthropic
+from anthropic.types import ToolParam
 
 from app.config import settings
 from app.schemas.profile import ProfileSnapshotData
@@ -13,7 +14,7 @@ from app.services.stage2 import Stage2UnavailableError
 
 STAGE3_MODEL = "claude-sonnet-5"
 
-STAGE3_TOOL = {
+STAGE3_TOOL: ToolParam = {
     "name": "stage3_fit_analysis",
     "description": "Record the Stage 3 structured fit analysis for this job posting.",
     "input_schema": {

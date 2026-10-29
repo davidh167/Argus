@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import DateTime, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -21,6 +22,6 @@ class ProfileIntakeMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     # 'user'|'assistant', no DB enum -- matches Application.status/
     # Company.ats_type's established free-text convention.
-    role: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[Literal["user", "assistant"]] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

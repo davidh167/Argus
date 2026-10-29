@@ -16,6 +16,7 @@ passes through untouched.
 
 import re
 from dataclasses import dataclass
+from typing import TypeGuard
 from urllib.parse import parse_qs, urlsplit
 
 _JOB_ID = re.compile(r"/jobs/view/(?:[^/]*-)?(\d+)")
@@ -56,8 +57,8 @@ def _job_id(url: str) -> str | None:
     return None
 
 
-def is_linkedin_job_url(url: str | None) -> bool:
-    return bool(url) and _job_id(url) is not None
+def is_linkedin_job_url(url: str | None) -> TypeGuard[str]:
+    return bool(url and _job_id(url) is not None)
 
 
 def canonical_url(url: str) -> str:

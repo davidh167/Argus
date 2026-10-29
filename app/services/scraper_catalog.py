@@ -7,9 +7,11 @@ integration pattern closely.
 
 import logging
 from datetime import date, datetime, timezone
+from typing import cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from anthropic import Anthropic
+from anthropic.types import ToolParam
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -40,7 +42,7 @@ SCRAPE_MAX_PAGES = 100
 
 _POSTED_DATE_FORMATS = ("%b %d, %Y", "%B %d, %Y", "%Y-%m-%d")
 
-SCRAPER_STRATEGY_TOOL = {
+SCRAPER_STRATEGY_TOOL: ToolParam = {
     "name": "generate_extraction_strategy",
     "description": "Record the deterministic CSS-selector extraction strategy for this careers page.",
     "input_schema": {
@@ -143,7 +145,7 @@ def apply_extraction_strategy(html: str, strategy: dict, base_url: str) -> list[
                 "title": title_el.get_text(strip=True),
                 "description": desc_el.get_text(strip=True) if desc_el else None,
                 "posted_date_text": date_el.get_text(strip=True) if date_el else None,
-                "url": urljoin(base_url, link_el["href"])
+                "url": urljoin(base_url, cast(str, link_el["href"]))
                 if link_el and link_el.get("href")
                 else None,
             }
@@ -224,6 +226,8 @@ def scrape_company(
     fetch_strategy = fetch_strategy or HttpxFetch()
     html = fetch_strategy.fetch(company.careers_url)
     scraper = get_or_create_scraper_strategy(db, company.domain, html, ats_type=company.ats_type)
+    # get_or_create_scraper_strategy always stores a strategy; the column is merely nullable.
+    assert scraper.extraction_strategy is not None
     results = apply_extraction_strategy(
         html, scraper.extraction_strategy, base_url=company.careers_url
     )
