@@ -2,8 +2,16 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python:
+    name: python
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -29,4 +37,43 @@ jobs:
       - run: pip install poetry
       - run: poetry install
       - run: poetry run ruff check .
-      - run: poetry run pytest -q
+      - run: poetry run ruff format --check .
+      # Measured 84% locally; the floor sits a few points below so only a real drop fails CI.
+      - run: poetry run pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
+
+  desktop:
+    name: desktop
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - run: cargo check --locked
+
+  native:
+    name: native
+    runs-on: macos-latest
+    env:
+      # Homebrew's stable symlink to the installed llama.cpp; build.rs links and sets the rpath from it.
+      ARGUS_LLAMA_PREFIX: /opt/homebrew/opt/llama.cpp
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install cmake ninja catch2 google-benchmark llama.cpp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/rust/argus-core
+      # Same configuration as native/README.md. The embedder tests skip themselves when no GGUF model
+      # is present (ARGUS_MODEL unset, no Ollama blob), so the 274 MB model is never downloaded.
+      - name: Configure C++ core (ASan + UBSan)
+        run: cmake -S native -B "$RUNNER_TEMP/native-build" -G Ninja -DARGUS_BUILD_TESTS=ON -DARGUS_SANITIZE=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build C++ core
+        run: cmake --build "$RUNNER_TEMP/native-build"
+      - name: ctest
+        run: ctest --test-dir "$RUNNER_TEMP/native-build" --output-on-failure
+      - name: cargo test (Rust bindings)
+        working-directory: native/rust/argus-core
+        run: cargo test --locked
