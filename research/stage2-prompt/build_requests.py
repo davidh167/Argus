@@ -35,7 +35,9 @@ TAG = sys.argv[sys.argv.index("--tag") + 1] if "--tag" in sys.argv else None
 MODEL = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else None
 if MODEL and not TAG:
     sys.exit("--model needs --tag NAME (it names the saved batch id)")
-MAX_TOKENS = int(sys.argv[sys.argv.index("--max-tokens") + 1]) if "--max-tokens" in sys.argv else None
+MAX_TOKENS = (
+    int(sys.argv[sys.argv.index("--max-tokens") + 1]) if "--max-tokens" in sys.argv else None
+)
 # Input $/MTok at the Batch API rate (half the standard rate), and how many tokens the model's
 # tokenizer produces relative to the chars/4 estimate below (Haiku 5.5's is ~30% larger).
 BATCH_INPUT_RATE = {"claude-haiku-5-5": 0.05}.get(MODEL, 0.50)
