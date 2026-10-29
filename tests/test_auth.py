@@ -24,3 +24,13 @@ def test_protected_route_with_wrong_token_is_401():
 def test_protected_route_with_correct_token_is_200():
     resp = client.get("/postings", headers={"Authorization": f"Bearer {settings.api_token}"})
     assert resp.status_code == 200
+
+
+def test_settings_read_the_repo_root_env_file_regardless_of_working_directory():
+    from pathlib import Path
+
+    from app.config import Settings
+
+    env_file = Settings.model_config["env_file"]
+    assert Path(env_file).is_absolute()
+    assert Path(env_file) == Path(__file__).resolve().parents[1] / ".env"

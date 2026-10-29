@@ -1132,7 +1132,7 @@ Next steps
        DATABASE_URL='{dsn}' \\
        API_TOKEN='<token>' \\
        poetry run uvicorn app.main:app --reload --reload-dir app
-  3. Point the desktop app or extension at http://localhost:8000 with the same token.
+  3. Point the desktop app or extension at http://127.0.0.1:8000 with the same token.
   Re-run with --reset to wipe and rebuild the demo data. No Anthropic key is needed; do not use
   the Stage 2 / Stage 3 / batch buttons on demo data.
 """

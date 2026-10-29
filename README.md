@@ -86,6 +86,9 @@ poetry run python scripts/seed_profile.py profile_seed.local.yaml
 poetry run uvicorn app.main:app --reload --reload-dir app   # API docs at http://localhost:8000/docs
 ```
 
+Every route except `/health` needs the token, for example
+`curl -H "Authorization: Bearer $API_TOKEN" http://127.0.0.1:8000/profile/current`.
+
 `profile_seed.yaml` is a blank template; your real profile lives in `profile_seed.local.yaml`, which
 is gitignored. Be honest in `skills.core` versus `skills.developing` versus `skills.coursework`: the
 fit analysis weights them very differently.
@@ -124,8 +127,10 @@ Chrome gives a new unpacked extension a new id when its folder moves, which clea
 
 ### MCP server
 
-`mcp_server.py` serves the same operations over stdio. Copy `.mcp.json.example` to `.mcp.json` and fix
-the paths to register it with an MCP client.
+`mcp_server.py` serves the same operations over stdio. Copy `.mcp.json.example` to `.mcp.json` and replace
+both `/absolute/path/to/argus` with this checkout's path (the command is the in-project virtualenv's Python,
+created by `poetry install`). Settings come from the repo-root `.env`, so the client can launch it from
+any directory.
 
 ## Cost and safety
 
@@ -169,7 +174,8 @@ poetry run pytest
 ```
 
 The suite runs against its own throwaway database (`<name>_test`, recreated each run), so it never
-touches real data, and it makes no live API calls. CI runs the Python checks (lint, format, tests with
+touches real data, and it makes no live API calls. That database stays on the server between runs so the
+next one is fast; drop it with `DROP DATABASE <name>_test` if you want it gone. CI runs the Python checks (lint, format, tests with
 coverage) plus a `cargo check` of the desktop app and the native core's C++ and Rust tests. The native core has its own C++ and Rust tests; see
 `native/README.md`.
 
