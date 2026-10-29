@@ -71,8 +71,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pipeline, profile versioning 
 
 ## Quick start
 
-Requirements: Docker, Python 3.12+, [Poetry](https://python-poetry.org/), and an Anthropic API key.
-The desktop app additionally needs Rust and the Tauri CLI.
+Requirements: Docker (the daemon must be running), Python 3.12+, [Poetry](https://python-poetry.org/),
+and an Anthropic API key. The desktop app additionally needs Rust and the Tauri CLI
+(`cargo install tauri-cli`).
 
 ```bash
 cp .env.example .env                       # then set ANTHROPIC_API_KEY
@@ -93,11 +94,24 @@ Embeddings for the skills view default to a local [Ollama](https://ollama.com) s
 (`ollama pull nomic-embed-text`). To run without Ollama, build the native core and set
 `EMBEDDINGS_BACKEND=native` (see [native/README.md](native/README.md)).
 
+### Try it with demo data (no API key)
+
+```bash
+PYTHONPATH=. poetry run python scripts/seed_demo.py --reset
+```
+
+This loads a fictional profile and 21 invented postings into a separate `argus_demo` database and prints
+the commands to run the backend against it. Your real database is never touched. Skip the Stage 2, Stage 3
+and batch buttons on demo data, since they call the Anthropic API.
+
 ### Desktop app
 
 ```bash
 cd desktop && cargo tauri dev
 ```
+
+The app talks to the backend at `127.0.0.1:8000` (hardcoded) and reads `API_TOKEN` from the `.env` in the
+repository root, so run it from inside the checkout.
 
 `cargo tauri build` produces an unsigned app bundle; macOS will ask you to right-click and Open it the
 first time.
@@ -105,7 +119,8 @@ first time.
 ### Browser extension
 
 Chrome, Manifest V3: `chrome://extensions` → Developer mode → Load unpacked → select `extension/`,
-then paste your `API_TOKEN` on the options page.
+then paste your `API_TOKEN` on the options page. The extension also talks to `127.0.0.1:8000` only.
+Chrome gives a new unpacked extension a new id when its folder moves, which clears the saved token.
 
 ### MCP server
 
@@ -124,6 +139,7 @@ routes except `/health` require the bearer token.
 - The API requires a bearer token (`API_TOKEN`) on every router; only `/health` is open
   (`app/auth.py`, `app/main.py`). The desktop app talks to `http://127.0.0.1:8000`
   (`desktop/src-tauri/src/lib.rs`), and the quick-start `uvicorn` command binds to loopback by default.
+- The PostgreSQL container publishes its port on `127.0.0.1` only (`docker-compose.yml`).
 - `ANTHROPIC_API_KEY` and `API_TOKEN` live in `.env`, which is gitignored. A rejected key returns a
   clear 502 and is logged, rather than an opaque 500 (`app/main.py`).
 - What leaves your machine: job text and profile text sent to Anthropic with your own key, plus the
@@ -143,7 +159,7 @@ routes except `/health` require the bearer token.
 | `extension/` | Chrome extension |
 | `native/` | C++ retrieval core (SQLite FTS5, llama.cpp embeddings, usearch) with a C API and Rust bindings |
 | `research/` | Evaluation harnesses and the experiments behind the ranking and clustering choices |
-| `scripts/` | Setup and maintenance scripts |
+| `scripts/` | Setup, maintenance and demo-data scripts |
 | `tests/` | pytest suite |
 
 ## Tests
@@ -153,7 +169,8 @@ poetry run pytest
 ```
 
 The suite runs against its own throwaway database (`<name>_test`, recreated each run), so it never
-touches real data, and it makes no live API calls. The native core has its own C++ and Rust tests; see
+touches real data, and it makes no live API calls. CI runs the Python checks (lint, format, tests with
+coverage) plus a `cargo check` of the desktop app and the native core's C++ and Rust tests. The native core has its own C++ and Rust tests; see
 `native/README.md`.
 
 ## Research
