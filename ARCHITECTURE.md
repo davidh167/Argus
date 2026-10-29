@@ -10,7 +10,7 @@ trustworthy as the profile changes.
 ## Components
 
 - **Backend** (`app/`): FastAPI over PostgreSQL via SQLAlchemy, Alembic migrations. A service layer
-  holds the logic; routers are thin. All routes require a bearer token generated locally.
+  holds the logic; routers are thin. All routes except `/health` require a bearer token generated locally (`app/auth.py`).
 - **Surfaces**: a Tauri desktop app (Rust commands that call the backend API; plain JS UI), an MCP
   server, and a Manifest V3 Chrome extension. None duplicates business logic.
 - **Native core** (`native/`): optional in-process retrieval (C++20 with a C API and Rust bindings).
@@ -65,6 +65,10 @@ invalidated the same way.
   cached. Embedding similarity alone could not separate an umbrella skill the profile demonstrates
   from an unrelated gap.
 - **Readiness tiers** bucket analyzed roles by hard-gap count.
+
+## Trust boundary
+
+Posting text comes from external pages and is untrusted. The Stage 2, Stage 3, roadmap and scraper-catalog prompts state that it is data to evaluate, never instructions, and the content is introduced to the model as untrusted. Job and profile text are sent to Anthropic with the user's own key; everything else is stored locally.
 
 ## Testing
 

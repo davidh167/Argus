@@ -22,6 +22,41 @@ Anthropic API key; your data stays on your machine.
 - **Offers three surfaces** over one backend: a native desktop app (Tauri), an MCP server for
   conversational use, and the browser extension.
 
+## Results
+
+Measured on one user's data; each row links to the report or README it comes from.
+
+| Question | Finding | Source |
+|---|---|---|
+| Ranking: BM25 vs the previous TF-IDF cosine | nDCG@50 0.216 [0.145, 0.294] vs 0.109 [0.067, 0.162]; BM25 also beat a local embedding model (0.103). 53 queries on a length-matched pool of a 3,024-posting corpus, with positive-unlabeled labels and a residual capture-style confound | [research/ranking-eval](research/ranking-eval/README.md) |
+| Skill-phrase clustering | Pairwise F1 0.16 (previous greedy centroid @ 0.65) to 0.75 (average-link @ 0.80); precision 0.09 to 0.78, recall 0.77 to 0.71. 270 phrases, 56 gold SAME pairs, tuned and scored on the same phrases | [research/cluster-quality](research/cluster-quality/README.md) |
+| Triage repeatability | Two identical Haiku 5.5 runs differ on 1 to 2 of 67 verdicts; Haiku 4.5 differs on about a quarter | [research/stage2-prompt](research/stage2-prompt/README.md) |
+| Field-neutral triage prompt | Changed 14 of 67 verdicts on Haiku 5.5 against a noise floor of 1 to 2; skips fell from 20 to 10, almost all to `analyze` | [research/stage2-prompt](research/stage2-prompt/README.md) |
+| Native core vs Ollama | Same weights; mean cosine 0.999999 over 300 skill phrases. Throughput 609 vs 160 texts/s on phrases, 76 vs 60 on 1,200-character excerpts; 7,897 phrases in 5.6 s vs about 49 s. FTS5 BM25 nDCG@50 0.208 vs 0.216 for the shipped ranker | [native/README.md](native/README.md), [native/reports/ollama_agreement.md](native/reports/ollama_agreement.md) |
+
+Limits: one user's postings and choices, and small samples (tens of queries, hundreds of phrases), so
+treat these as evidence for the design choices, not benchmarks.
+
+## Design decisions
+
+- **Filter in stages to control cost.** Free title rules, then Haiku triage, then Sonnet analysis; both
+  paid stages use the Batch API, are capped (default 30), previewed with an estimate, and skip postings
+  already in an unapplied batch (`app/services/batch_preview.py`, `stage2_batch.py`, `stage3_batch.py`).
+- **Version the profile; mark verdicts stale.** Each verdict stores the profile version it used, so an
+  edit flags old results instead of deleting them (`app/models/verdict.py` `is_stale`,
+  `app/schemas/verdict.py` `build_verdict_out`).
+- **BM25 over embeddings for ranking.** It beat the embedding baseline in the evaluation above, so the app
+  uses `bm25s`; embeddings are kept for clustering and skill evidence (`app/services/relevance.py`).
+- **Weight market demand by interest.** Manual captures, stars and active applications count; bulk
+  crawled postings do not, because ~3,000 of them swamped 53 hand-picked ones when tried with a small
+  base weight. The weights are judgment calls, not measured (`app/services/roadmap.py`, `interest_weights`).
+- **Scraped text is data, not instructions.** Stage 2, Stage 3, roadmap and scraper prompts say so and
+  wrap posting content as untrusted (`app/services/stage2.py`, `stage3.py`).
+- **Local-first.** PostgreSQL in Docker, a gitignored personal profile, optional in-process embeddings
+  so Ollama is not required (`docker-compose.yml`, `native/`).
+- **Choose models by measurement, and keep the evidence.** Stage 2 moved to Haiku 5.5 after the
+  repeatability comparison above; the reports are committed under `research/`.
+
 ## Architecture
 
 ```
@@ -84,6 +119,20 @@ analysis a few cents, both at Batch API pricing. Nothing runs automatically or u
 LLM-costing action is triggered by you, capped by default, and previewed with an estimate first. All
 routes except `/health` require the bearer token.
 
+## Security and privacy
+
+- The API requires a bearer token (`API_TOKEN`) on every router; only `/health` is open
+  (`app/auth.py`, `app/main.py`). The desktop app talks to `http://127.0.0.1:8000`
+  (`desktop/src-tauri/src/lib.rs`), and the quick-start `uvicorn` command binds to loopback by default.
+- `ANTHROPIC_API_KEY` and `API_TOKEN` live in `.env`, which is gitignored. A rejected key returns a
+  clear 502 and is logged, rather than an opaque 500 (`app/main.py`).
+- What leaves your machine: job text and profile text sent to Anthropic with your own key, plus the
+  requests that crawl careers pages. Embeddings run locally (Ollama or the native core).
+- Gitignored: `.env`, `profile_seed.local.yaml`, `*.pdf`, `.mcp.json`, and `research/*/data/` (derived from
+  personal postings).
+- Scraped postings are treated as untrusted data in the prompts, as noted above. This is a prompt-level
+  mitigation, not a guarantee.
+
 ## Repository layout
 
 | Path | Contents |
@@ -109,9 +158,7 @@ touches real data, and it makes no live API calls. The native core has its own C
 
 ## Research
 
-`research/` holds the measurements behind several design choices, for example that BM25 ranks the
-roles a user picked above a TF-IDF baseline, and how skill phrases should be clustered. See
-[research/README.md](research/README.md).
+The evaluation harnesses and reports behind the Results table are in [research/README.md](research/README.md).
 
 ## Current limitations
 
