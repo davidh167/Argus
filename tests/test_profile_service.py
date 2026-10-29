@@ -71,3 +71,22 @@ def test_create_profile_version_request_round_trips_through_the_full_pipeline(db
     reparsed = ProfileSnapshotData.model_validate(current.snapshot)
     assert reparsed.skills.developing == ["Kubernetes"]
     assert reparsed.skills.core == ["Python"]
+
+
+def test_blank_seed_template_validates_and_sets_no_placeholder_criteria():
+    # The template is meant to be copied and filled in, but a stranger who seeds it unedited must
+    # not end up with literal "e.g. ..." strings stored as real triage rules.
+    from pathlib import Path
+
+    import yaml
+
+    from app.schemas.profile import ProfileSnapshotData
+
+    raw = yaml.safe_load((Path(__file__).resolve().parents[1] / "profile_seed.yaml").read_text())
+    raw.pop("changelog", None)
+    criteria = ProfileSnapshotData.model_validate(raw).criteria
+    assert criteria.skip_patterns == []
+    assert criteria.target_signals == []
+    assert criteria.title_fast_track == []
+    assert criteria.title_skip == []
+    assert criteria.seniority_floor is None and criteria.seniority_ceiling is None

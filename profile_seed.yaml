@@ -81,21 +81,20 @@ credentials:
 criteria:
   # The CORE FOCUS of roles you want to avoid, in your own words. Stage 2 reads the job
   # description and skips a role whose real focus matches one of these.
-  skip_patterns:
-    - "e.g. customer-facing"
+  # Example: ["customer-facing", "embedded firmware"]
+  skip_patterns: []
   # Stage 1 routes a posting on its TITLE alone, before anything reads the description. Plain
   # phrases, case-insensitive, whole words (not regexes). A title containing a title_skip phrase is
   # skipped; one containing a title_fast_track phrase goes to the front of the queue; anything else
   # is analyzed. Leave both empty and Stage 1 skips and fast-tracks nothing (Stage 2 reads
   # everything), which is the safe default.
-  title_fast_track:
-    - "e.g. backend engineer"
-  title_skip:
-    - "e.g. account executive"
+  # Examples: title_fast_track: ["backend engineer"], title_skip: ["account executive"]
+  title_fast_track: []
+  title_skip: []
   # Positive signals used for classical-NLP relevance ranking (see
   # app/services/relevance.py) -- what you're actually looking for.
-  target_signals:
-    - "e.g. backend engineering"
+  # Example: ["backend engineering", "early-stage startup"]
+  target_signals: []
   # Used by "matches my location" filtering/sorting (app/utils/location.py).
   # cities/countries are plain substrings matched against a posting's
   # locations -- no geocoding, so "San Francisco" matches "San Francisco,
@@ -112,5 +111,6 @@ criteria:
     remote_ok: true
     hybrid_ok: true
     onsite_ok: true
-  seniority_floor: "e.g. ~2 years experience"
-  seniority_ceiling: "e.g. mid-level IC"
+  # Examples: seniority_floor: "~2 years experience", seniority_ceiling: "mid-level IC"
+  seniority_floor: null
+  seniority_ceiling: null
