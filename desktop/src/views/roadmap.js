@@ -189,8 +189,8 @@ function roadmapItemCard(item) {
 }
 
 function readinessEntryCard(entry) {
-  const card = document.createElement("div");
-  card.className = "card";
+  const card = document.createElement("details");
+  card.className = "card readiness-entry";
   const gaps = entry.hard_gaps.length
     ? html`<div class="verdict-line"><span class="stage">Hard gaps</span>${entry.hard_gaps.join(", ")}</div>`
     : nothing;
@@ -198,8 +198,10 @@ function readinessEntryCard(entry) {
     ? html`<div class="verdict-line"><span class="stage">Maps to</span>roadmap item #${entry.roadmap_item_id} -- "${entry.matched_gap}"</div>`
     : nothing;
   render(
-    html`<h3 class="trend-title">${entry.title}</h3>
-      <div class="subtitle">${entry.company_name} -- ${entry.verdict}</div>
+    html`<summary>
+        <span class="trend-title">${entry.title}</span>
+        <span class="subtitle">${entry.company_name} -- ${entry.verdict}</span>
+      </summary>
       <div class="verdict-line">${entry.one_liner}</div>
       ${gaps}${match}`,
     card
@@ -210,6 +212,9 @@ function readinessEntryCard(entry) {
 function renderReadinessSection(elId, entries) {
   const el = document.getElementById(elId);
   el.innerHTML = "";
+  const label = el.previousElementSibling;
+  label.dataset.base ??= label.textContent;
+  label.textContent = `${label.dataset.base} (${entries.length})`;
   if (entries.length === 0) {
     el.innerHTML = '<div class="empty-state">Nothing here yet.</div>';
     return;

@@ -99,7 +99,9 @@ function criteriaBlock(snapshot) {
 
 async function loadCurrentProfile() {
   const el = document.getElementById("profileCurrent");
-  el.textContent = "Loading...";
+  // lit's render() appends to existing content instead of replacing it, so the placeholder must be a
+  // rendered template that the real content then replaces.
+  render(html`<div class="empty-state">Loading profile...</div>`, el);
   const profile = await call("get_current_profile", {});
   currentSnapshot = profile.snapshot;
   render(

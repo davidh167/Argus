@@ -768,20 +768,45 @@ button:disabled {
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
   color: var(--muted);
   font: inherit;
   font-weight: 600;
   padding: 8px 14px;
   cursor: pointer;
+  outline: none;
 }
 
 .subtab-btn:hover {
   color: var(--text);
+  background: var(--accent-surface);
+}
+
+.subtab-btn:focus-visible {
+  background: var(--accent-surface);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .subtab-btn.active {
   color: var(--accent);
+  background: var(--accent-surface);
   border-bottom-color: var(--accent);
+}
+
+/* Readiness entries: a one-line summary row that expands to the one-liner and gaps. */
+.readiness-entry > summary {
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.readiness-entry > summary .trend-title {
+  display: block;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.readiness-entry[open] > summary {
+  margin-bottom: 8px;
 }
 
 .show-more-row {
