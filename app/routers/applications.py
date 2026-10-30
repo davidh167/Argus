@@ -16,6 +16,15 @@ from app.services import postings as postings_service
 # auth dependency in app/main.py.
 router = APIRouter(tags=["applications"])
 
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(cell):
+    """Neutralize spreadsheet formula injection: posting titles/company names are attacker-controlled."""
+    if isinstance(cell, str) and cell.startswith(_CSV_FORMULA_PREFIXES):
+        return "'" + cell
+    return cell
+
 
 @router.post("/postings/{posting_id}/application", response_model=ApplicationOut)
 def update_application_status(
@@ -73,7 +82,8 @@ def export_applications_csv(
     )
     for r in rows:
         writer.writerow(
-            [
+            _csv_safe(cell)
+            for cell in [
                 r.posting_title,
                 r.posting_company_name,
                 r.posting_freshness,

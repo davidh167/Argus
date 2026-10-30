@@ -24,3 +24,8 @@ research/*/data/
 native/build/
 native/build-*/
 native/rust/*/target/
+
+# Env variants (keep the example template tracked) and Word resumes -- real PII
+.env.*
+!.env.example
+*.docx
