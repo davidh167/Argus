@@ -60,3 +60,28 @@ token use. At the Batch API rate a run costs under a cent of input tokens on Hai
   20 to 10, almost all of them to `analyze`. Anything the old prompt excluded by name (cybersecurity,
   sales-adjacent or forward-deployed roles) now has to be in the user's `skip_patterns`.
 
+
+## Canary: neutralised key_skills wording (tag `neutral2`)
+
+`app/services/stage2.py` no longer cites LLM/NLP/CUDA/RAG/"machine learning" in the key_skills guidance
+(examples now span clinical, trades, finance and software). Before trusting it, run it once and compare
+with the stored production verdicts and the earlier unchanged-prompt run (`batch_control.json`, whose
+disagreement with the stored verdicts is the run-to-run noise yardstick). Nothing below is run for you;
+only `--submit` spends money.
+
+```
+# 1. Build and inspect (dry run: request count and token estimate, nothing sent, nothing written)
+PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py --control --tag neutral2
+
+# 2. Submit (costs money; saves the batch id to data/batch_neutral2.json)
+PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py --control --tag neutral2 --submit
+
+# 3. After the batch has ended: stored vs control vs neutral2, with errors/refusals/truncation and tokens
+PYTHONPATH=. poetry run python research/stage2-prompt/compare_models.py neutral2
+```
+
+`--control` is required: it means "use the production prompt in `app/services/stage2.py`", which is now the
+neutral one. Without it the script builds the old v2 candidate prompt. Read the table as: `stored vs control`
+is the noise floor; `control vs neutral2` and `stored vs neutral2` should be about that size. Verdict
+differences well above it mean the wording matters. The key_skills themselves are not compared by
+`compare_models.py`; use `compare.py`-style inspection of the batch results for spelling consistency.

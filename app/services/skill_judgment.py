@@ -59,13 +59,13 @@ and open-source contributions. The list is a shortlist of likely matches, not th
 
 Statuses:
 - have: the evidence shows the candidate has actually used this skill, or work squarely inside it. A \
-tool or framework that implies the skill counts (a shipped retrieval system demonstrates "information \
-retrieval"; a project built on a named library demonstrates that library). A broad area counts as have \
+tool or framework that implies the skill counts (a charge-nurse role demonstrates "staff supervision"; a project built on \
+a named tool or library demonstrates that tool). A broad area counts as have \
 when the evidence contains concrete work inside it, not merely a mention of the topic.
 - developing: the profile marks the skill as in progress, or shows only adjacent or partial exposure \
 (related but different tooling, coursework, or a small part of the skill).
 - gap: nothing in the evidence demonstrates it, or the only overlap is a shared word or a different \
-skill. Two skills that merely sound alike are not a match (e.g. "C++" is not shown by Python work).
+skill. Two skills that merely sound alike are not a match (e.g. "C++" is not shown by Python work, nor "phlebotomy" by general lab work).
 
 Judge only from the evidence given; do not assume skills from an employer's reputation or a job title. \
 Cite the ids of the evidence items you relied on. Call the tool exactly once."""

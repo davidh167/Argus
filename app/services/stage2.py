@@ -91,13 +91,14 @@ name ("CI/CD", "TCP/IP", "A/B testing").
 experience, no "strong"/"production"/"hands-on", no versions. "Kubernetes", not "production \
 Kubernetes experience"; "Python", not "Python 3.11"; "AutoCAD", not "proficiency in AutoCAD".
 - Spell a skill identically every time. If practitioners normally write it as an acronym, use the \
-acronym ("LLM", "NLP", "SQL", "CUDA", "RAG", "GAAP"); otherwise spell it out. Never put both an \
+acronym ("SQL", "GAAP", "BLS", "OSHA", "CAD"); otherwise spell it out. Never put both an \
 acronym and its expansion in the list.
 - If the posting names a skill that matches an item in the candidate's skills_core or \
 skills_developing, use the candidate's spelling for it. Only include a skill the posting itself \
 names or clearly requires -- never add one just because the candidate has it.
-- Include broad skill areas as well as specific tools ("machine learning", "distributed systems", \
-"financial modeling"): a broad area the posting clearly requires counts as a skill. Leave out soft \
+- Extract skills, tools, and credentials exactly as the posting presents them, whatever the field \
+("wound care", "CNC machining", "financial modeling", "distributed systems", "RN license"). Include \
+broad skill areas as well as specific tools: a broad area the posting clearly requires counts as a skill. Leave out soft \
 skills ("communication", "teamwork") and role titles.
 
 Call the stage2_triage tool exactly once with your verdict."""
