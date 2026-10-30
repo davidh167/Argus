@@ -256,17 +256,20 @@ def test_system_prompts_have_no_ml_wording(prompt):
     assert leaks(prompt) == set()
 
 
-# Known leaks: these prompts name ML terms as examples. They were tuned and evaluated on an ML
-# profile (research/), so rewording needs a live re-evaluation. strict=True makes these tests fail
-# loudly (XPASS) once the wording is neutralised, so the marker gets removed with the fix.
-@pytest.mark.xfail(strict=True, reason="stage2 key_skills examples cite LLM/NLP/CUDA/RAG/ML")
 def test_stage2_system_prompt_has_no_ml_wording():
     assert leaks(stage2.SYSTEM_PROMPT) == set()
 
 
-@pytest.mark.xfail(strict=True, reason="skill_judgment examples cite a retrieval system")
 def test_skill_judgment_system_prompt_has_no_ml_wording():
     assert leaks(skill_judgment.SYSTEM_PROMPT) == set()
+
+
+def test_stage2_key_skills_guidance_keeps_its_cap_and_spans_several_fields():
+    prompt = stage2.SYSTEM_PROMPT
+    assert "up to 12 skills" in prompt
+    assert leaks(prompt) == set()
+    for example in ["wound care", "CNC machining", "financial modeling", "distributed systems"]:
+        assert example in prompt
 
 
 # --- Relevance ranking and location -------------------------------------------------------------
