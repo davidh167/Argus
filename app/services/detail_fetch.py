@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.crawlers.base import clean_html_text
-from app.crawlers.fetch import FetchStrategy, HttpxFetch
+from app.crawlers.fetch import FetchStrategy, SafeFetch
 
 
 @dataclass
@@ -292,6 +292,6 @@ def extract_detail(html: str) -> DetailExtraction | None:
 def fetch_and_extract_detail(
     url: str, fetch_strategy: FetchStrategy | None = None
 ) -> DetailExtraction | None:
-    fetch_strategy = fetch_strategy or HttpxFetch()
+    fetch_strategy = fetch_strategy or SafeFetch()
     html = fetch_strategy.fetch(url)
     return extract_detail(html)

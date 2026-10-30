@@ -1,10 +1,17 @@
-import ipaddress
-import logging
-import socket
-from abc import ABC, abstractmethod
-from urllib.parse import urljoin, urlsplit
+"""Fetching of untrusted URLs (scraped hrefs, user-entered careers pages).
 
-import httpx
+SSRF protection (private/loopback/link-local/metadata addresses, redirect re-validation, connecting
+to the validated IP so DNS rebinding cannot swap it) is done by `requests-hardened` (Saleor). This
+module only adds what no maintained library provides: a response size cap and a content-type
+allowlist. Failures raise: requests_hardened.ip_filter.InvalidIPAddress (blocked address),
+requests.exceptions.InvalidSchema / InvalidURL (non-http(s) or hostless URL),
+requests.exceptions.TooManyRedirects, requests.exceptions.HTTPError, and the two errors below.
+"""
+
+import logging
+from abc import ABC, abstractmethod
+
+from requests_hardened import Config, HTTPSession
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +23,13 @@ ALLOWED_CONTENT_TYPES = (
     "application/json",
     "application/ld+json",
 )
-_REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 
-
-class UnsafeUrlError(ValueError):
-    """URL is not an http(s) URL to a public host (SSRF guard)."""
-
-
-class TooManyRedirectsError(RuntimeError):
-    pass
+DEFAULT_CONFIG = Config(
+    ip_filter_enable=True,
+    ip_filter_allow_loopback_ips=False,
+    never_redirect=False,
+    default_timeout=(10, 30),
+)
 
 
 class ResponseTooLargeError(RuntimeError):
@@ -35,64 +40,39 @@ class UnsupportedContentTypeError(RuntimeError):
     pass
 
 
-def validate_public_url(url: str) -> None:
-    """Reject anything that is not http(s) to a host resolving only to public addresses.
-
-    Scraped hrefs and user-entered careers URLs are untrusted; without this a page can point us
-    at loopback services or cloud metadata (169.254.169.254) and have the body stored as a JD.
-    Raises UnsafeUrlError (and logs) rather than falling back."""
-    parts = urlsplit(url)
-    host = parts.hostname
-    if parts.scheme not in ("http", "https") or not host:
-        logger.warning("Blocked fetch of non-http(s) or hostless URL: %r", url)
-        raise UnsafeUrlError(f"Only http(s) URLs with a host are allowed: {url!r}")
-    try:
-        infos = socket.getaddrinfo(host, parts.port or None, proto=socket.IPPROTO_TCP)
-    except socket.gaierror as exc:
-        logger.warning("Blocked fetch, host did not resolve: %r", url)
-        raise UnsafeUrlError(f"Could not resolve host {host!r}") from exc
-    for info in infos:
-        ip = ipaddress.ip_address(str(info[4][0]).split("%")[0])
-        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
-            ip = ip.ipv4_mapped
-        if not ip.is_global or ip.is_multicast:
-            logger.warning("Blocked fetch of %r: host %r resolves to non-public %s", url, host, ip)
-            raise UnsafeUrlError(f"Host {host!r} resolves to a non-public address ({ip})")
-
-
 class FetchStrategy(ABC):
     @abstractmethod
     def fetch(self, url: str) -> str:
         """Return raw HTML for url."""
 
 
-class HttpxFetch(FetchStrategy):
-    def __init__(self, transport: httpx.BaseTransport | None = None) -> None:
-        self._transport = transport  # tests inject a mock transport; None means real network
+class SafeFetch(FetchStrategy):
+    def __init__(self, config: Config = DEFAULT_CONFIG) -> None:
+        self._config = config  # tests pass a loopback-allowing config to reach a local server
 
     def fetch(self, url: str) -> str:
-        with httpx.Client(timeout=30, follow_redirects=False, transport=self._transport) as client:
-            for _ in range(MAX_REDIRECTS + 1):
-                validate_public_url(url)  # every hop, not just the first
-                with client.stream("GET", url) as resp:
-                    if resp.status_code in _REDIRECT_STATUSES and "location" in resp.headers:
-                        url = urljoin(url, resp.headers["location"])
-                        continue
+        with HTTPSession(self._config) as session:
+            session.max_redirects = MAX_REDIRECTS
+            session.trust_env = False  # a proxy env var would make the IP filter check the proxy
+            try:
+                with session.get(url, stream=True) as resp:
                     resp.raise_for_status()
                     return _read_capped_text(resp, url)
-        logger.warning("Too many redirects fetching %r", url)
-        raise TooManyRedirectsError(f"More than {MAX_REDIRECTS} redirects, last: {url!r}")
+            except Exception:
+                logger.warning("Blocked or failed fetch of %r", url, exc_info=True)
+                raise
 
 
-def _read_capped_text(resp: httpx.Response, url: str) -> str:
-    content_type = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+def _read_capped_text(resp, url: str) -> str:
+    content_type_header = resp.headers.get("content-type", "")
+    content_type = content_type_header.split(";")[0].strip().lower()
     if content_type not in ALLOWED_CONTENT_TYPES:
-        logger.warning("Rejected %r: content-type %r", url, content_type)
         raise UnsupportedContentTypeError(f"Unsupported content-type {content_type!r} for {url!r}")
     body = bytearray()
-    for chunk in resp.iter_bytes():
+    for chunk in resp.iter_content(chunk_size=65536):
         body.extend(chunk)
         if len(body) > MAX_RESPONSE_BYTES:
-            logger.warning("Rejected %r: body over %d bytes", url, MAX_RESPONSE_BYTES)
             raise ResponseTooLargeError(f"Response for {url!r} exceeds {MAX_RESPONSE_BYTES} bytes")
-    return body.decode(resp.encoding or "utf-8", errors="replace")
+    # requests defaults text/* without a charset to ISO-8859-1; the web default is UTF-8.
+    encoding = resp.encoding if "charset=" in content_type_header.lower() else "utf-8"
+    return body.decode(encoding or "utf-8", errors="replace")

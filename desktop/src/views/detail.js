@@ -1,7 +1,7 @@
 // The right-hand pane of the Postings tab's master-detail layout (3.2).
 import { call, setStatus, openExternal } from "../api.js";
 import { renderVerdictLines, badgeRow } from "../components.js";
-import { esc } from "../escape.js";
+import { html, render } from "../vendor/lit-html.js";
 
 const paneEl = document.getElementById("postingDetail");
 
@@ -49,10 +49,13 @@ async function renderSimilar(id, onSelectPosting) {
       const row = document.createElement("div");
       row.className = "card similar-row";
       const pct = Math.round(similarity * 100);
-      row.innerHTML = `<div class="posting-main">
-        <h3>${esc(posting.title)}</h3>
-        <div class="subtitle">${esc(posting.company_name)} -- ${pct}% similar${possibly_same_role ? " -- possibly the same role" : ""}${posting.freshness === "closed" ? " -- closed" : ""}</div>
-      </div>`;
+      render(
+        html`<div class="posting-main">
+          <h3>${posting.title}</h3>
+          <div class="subtitle">${posting.company_name} -- ${pct}% similar${possibly_same_role ? " -- possibly the same role" : ""}${posting.freshness === "closed" ? " -- closed" : ""}</div>
+        </div>`,
+        row
+      );
       row.addEventListener("click", () => onSelectPosting(posting.id));
       list.appendChild(row);
     });

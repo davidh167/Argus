@@ -1,6 +1,6 @@
 import { call, setStatus } from "../api.js";
 import { postingIdChipsRow } from "../components.js";
-import { esc } from "../escape.js";
+import { html, render, nothing } from "../vendor/lit-html.js";
 
 let readinessLoaded = false;
 
@@ -8,8 +8,11 @@ function trendCard(trend, evidenceLabel = "starred, actively applied to, or a St
   const card = document.createElement("div");
   card.className = "card";
   const main = document.createElement("div");
-  main.innerHTML = `<h3 class="trend-title">${esc(trend.skill_or_language)}</h3>
-    <div class="subtitle">seen in ${trend.occurrence_count} posting(s) (${evidenceLabel}) -- click a posting to see its details:</div>`;
+  render(
+    html`<h3 class="trend-title">${trend.skill_or_language}</h3>
+      <div class="subtitle">seen in ${trend.occurrence_count} posting(s) (${evidenceLabel}) -- click a posting to see its details:</div>`,
+    main
+  );
   main.appendChild(postingIdChipsRow(trend.posting_ids));
   const briefBtn = document.createElement("button");
   briefBtn.className = "btn-secondary trend-brief-btn";
@@ -147,10 +150,13 @@ function roadmapItemCard(item) {
   const card = document.createElement("div");
   card.className = "card";
   const main = document.createElement("div");
-  main.innerHTML = `<h3 class="trend-title">${esc(item.skill_or_language)}</h3>
-    <div class="subtitle">status: ${esc(item.status)}</div>
-    ${item.what_it_is ? `<div class="verdict-line">${esc(item.what_it_is)}</div>` : ""}
-    ${item.why_it_matters ? `<div class="verdict-line">${esc(item.why_it_matters)}</div>` : ""}`;
+  render(
+    html`<h3 class="trend-title">${item.skill_or_language}</h3>
+      <div class="subtitle">status: ${item.status}</div>
+      ${item.what_it_is ? html`<div class="verdict-line">${item.what_it_is}</div>` : nothing}
+      ${item.why_it_matters ? html`<div class="verdict-line">${item.why_it_matters}</div>` : nothing}`,
+    main
+  );
   const row = document.createElement("div");
   row.className = "row roadmap-status-row";
   const select = document.createElement("select");
@@ -185,16 +191,19 @@ function roadmapItemCard(item) {
 function readinessEntryCard(entry) {
   const card = document.createElement("div");
   card.className = "card";
-  const gapsHtml = entry.hard_gaps.length
-    ? `<div class="verdict-line"><span class="stage">Hard gaps</span>${esc(entry.hard_gaps.join(", "))}</div>`
-    : "";
-  const matchHtml = entry.roadmap_item_id
-    ? `<div class="verdict-line"><span class="stage">Maps to</span>roadmap item #${esc(entry.roadmap_item_id)} -- "${esc(entry.matched_gap)}"</div>`
-    : "";
-  card.innerHTML = `<h3 class="trend-title">${esc(entry.title)}</h3>
-    <div class="subtitle">${esc(entry.company_name)} -- ${esc(entry.verdict)}</div>
-    <div class="verdict-line">${esc(entry.one_liner)}</div>
-    ${gapsHtml}${matchHtml}`;
+  const gaps = entry.hard_gaps.length
+    ? html`<div class="verdict-line"><span class="stage">Hard gaps</span>${entry.hard_gaps.join(", ")}</div>`
+    : nothing;
+  const match = entry.roadmap_item_id
+    ? html`<div class="verdict-line"><span class="stage">Maps to</span>roadmap item #${entry.roadmap_item_id} -- "${entry.matched_gap}"</div>`
+    : nothing;
+  render(
+    html`<h3 class="trend-title">${entry.title}</h3>
+      <div class="subtitle">${entry.company_name} -- ${entry.verdict}</div>
+      <div class="verdict-line">${entry.one_liner}</div>
+      ${gaps}${match}`,
+    card
+  );
   return card;
 }
 
@@ -216,10 +225,13 @@ function demandClusterCard(cluster) {
   const card = document.createElement("div");
   card.className = "card";
   const tone = DEMAND_TONE[cluster.status] ?? "";
-  card.innerHTML = `<h3 class="trend-title">${esc(cluster.skill_or_language)}</h3>
-    <div class="subtitle">${cluster.interest_posting_count} of your picked/starred role(s), ${cluster.posting_count} overall
-      <span class="badge${tone ? " tone-" + tone : ""}" title="${cluster.judged ? esc(cluster.judgment_reason) : "Similarity guess -- not checked against your profile yet"}">${esc(cluster.status)}${cluster.judged ? " \u2713" : ""}</span>
-      <span class="subtitle">interest score ${cluster.interest_weight}</span></div>`;
+  render(
+    html`<h3 class="trend-title">${cluster.skill_or_language}</h3>
+      <div class="subtitle">${cluster.interest_posting_count} of your picked/starred role(s), ${cluster.posting_count} overall
+        <span class="badge${tone ? " tone-" + tone : ""}" title="${cluster.judged ? cluster.judgment_reason : "Similarity guess -- not checked against your profile yet"}">${cluster.status}${cluster.judged ? " \u2713" : ""}</span>
+        <span class="subtitle">interest score ${cluster.interest_weight}</span></div>`,
+    card
+  );
   if (cluster.status === "gap") {
     const flagBtn = document.createElement("button");
     flagBtn.className = "btn-secondary trend-brief-btn";

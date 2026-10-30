@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.crawlers.fetch import FetchStrategy, HttpxFetch
+from app.crawlers.fetch import FetchStrategy, SafeFetch
 from app.models.company import Company
 from app.models.site_scraper import SiteScraper
 from app.services.stage2 import Stage2UnavailableError
@@ -36,7 +36,7 @@ SCRAPER_MODEL = "claude-sonnet-5"
 SCRAPE_INLINE_HYDRATE_CAP = 5
 
 # Safety valve for the pagination loop, not a cost concern -- extra pages
-# are just HttpxFetch() calls, no extra LLM cost per page. 2x headroom over
+# are just SafeFetch() calls, no extra LLM cost per page. 2x headroom over
 # the largest confirmed-real page count seen so far (Apple, ~50).
 SCRAPE_MAX_PAGES = 100
 
@@ -223,7 +223,7 @@ def scrape_company(
     if not company.domain:
         raise ScraperNotApplicableError("Company needs domain set before scraping.")
 
-    fetch_strategy = fetch_strategy or HttpxFetch()
+    fetch_strategy = fetch_strategy or SafeFetch()
     html = fetch_strategy.fetch(company.careers_url)
     scraper = get_or_create_scraper_strategy(db, company.domain, html, ats_type=company.ats_type)
     # get_or_create_scraper_strategy always stores a strategy; the column is merely nullable.

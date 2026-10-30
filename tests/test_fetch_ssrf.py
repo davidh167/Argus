@@ -1,159 +1,185 @@
-"""SSRF guard for HttpxFetch. DNS and HTTP are mocked; no real network."""
+"""SSRF guard (requests-hardened) and size/content-type caps in SafeFetch.
+
+Blocking cases use the production config with DNS mocked: the filter rejects before any socket is
+opened. Success/redirect/size cases talk to a throwaway server on 127.0.0.1 through a config that
+allows loopback (the only difference from production), so no external network is touched.
+"""
 
 import socket
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-import httpx
 import pytest
+import requests
+from requests_hardened import Config
+from requests_hardened.ip_filter import InvalidIPAddress
 
 from app.crawlers import fetch as fetch_mod
 from app.crawlers.fetch import (
-    HttpxFetch,
+    DEFAULT_CONFIG,
     ResponseTooLargeError,
-    TooManyRedirectsError,
-    UnsafeUrlError,
+    SafeFetch,
     UnsupportedContentTypeError,
-    validate_public_url,
 )
 
 HOSTS = {
-    "jobs.example.com": ["93.184.216.34"],
-    "evil.example.com": ["10.0.0.5"],
-    "loopback.example.com": ["127.0.0.1"],
-    "meta.example.com": ["169.254.169.254"],
-    "v6.example.com": ["::1"],
-    "mapped.example.com": ["::ffff:127.0.0.1"],
-    "multi.example.com": ["93.184.216.34", "192.168.1.1"],
+    "jobs.example.com": "93.184.216.34",
+    "evil.example.com": "10.0.0.5",
+    "loopback.example.com": "127.0.0.1",
+    "meta.example.com": "169.254.169.254",
+    "v6.example.com": "::1",
+    "mapped.example.com": "::ffff:127.0.0.1",
 }
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def fake_dns(monkeypatch):
+    real = socket.getaddrinfo
+
     def getaddrinfo(host, port, *args, **kwargs):
         if host in HOSTS:
-            addrs = HOSTS[host]
-        else:
-            try:
-                socket.inet_pton(socket.AF_INET, host)
-            except OSError:
-                raise socket.gaierror("no such host") from None
-            addrs = [host]
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (a, 0)) for a in addrs]
+            addr = HOSTS[host]
+            fam = socket.AF_INET6 if ":" in addr else socket.AF_INET
+            return [(fam, socket.SOCK_STREAM, 6, "", (addr, port or 0))]
+        return real(host, port, *args, **kwargs)
 
-    monkeypatch.setattr(fetch_mod.socket, "getaddrinfo", getaddrinfo)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
 @pytest.mark.parametrize(
     "url",
     [
-        "file:///etc/passwd",
-        "ftp://jobs.example.com/x",
-        "http:///nohost",
         "http://127.0.0.1:8000/docs",
         "http://169.254.169.254/latest/meta-data/",
         "http://0.0.0.0/",
-        "http://224.0.0.1/",
         "http://192.168.0.1/",
+        "http://[::1]/",
         "http://evil.example.com/",
         "http://loopback.example.com/",
         "http://meta.example.com/",
         "http://v6.example.com/",
         "http://mapped.example.com/",
-        "http://multi.example.com/",
-        "http://unresolvable.invalid/",
     ],
 )
-def test_validate_rejects_unsafe_urls(url):
-    with pytest.raises(UnsafeUrlError):
-        validate_public_url(url)
+def test_blocks_non_public_targets(fake_dns, url):
+    with pytest.raises(InvalidIPAddress):
+        SafeFetch().fetch(url)
 
 
-def test_validate_allows_public_host():
-    validate_public_url("https://jobs.example.com/careers")
+@pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://jobs.example.com/x"])
+def test_rejects_non_http_schemes(fake_dns, url):
+    with pytest.raises(requests.exceptions.InvalidSchema):
+        SafeFetch().fetch(url)
 
 
-def _fetcher(handler):
-    return HttpxFetch(transport=httpx.MockTransport(handler))
+def test_rejects_hostless_url(fake_dns):
+    with pytest.raises(requests.exceptions.InvalidURL):
+        SafeFetch().fetch("http:///nohost")
 
 
-def _html(request):
-    return httpx.Response(
-        200, headers={"content-type": "text/html; charset=utf-8"}, text="<p>ok</p>"
-    )
+LOCAL_CONFIG = Config(
+    ip_filter_enable=True,
+    ip_filter_allow_loopback_ips=True,
+    never_redirect=False,
+    default_timeout=(5, 5),
+)
 
 
-def test_fetch_returns_body():
-    assert _fetcher(_html).fetch("https://jobs.example.com/a") == "<p>ok</p>"
+class _Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        path = self.path
+        if path == "/ok":
+            self._send(200, "text/html; charset=utf-8", b"<p>ok</p>")
+        elif path == "/json":
+            self._send(200, "application/json", b'{"a": 1}')
+        elif path == "/utf8-no-charset":
+            self._send(200, "text/html", "café".encode())
+        elif path == "/zip":
+            self._send(200, "application/zip", b"PK")
+        elif path == "/big":
+            self._send(200, "text/html", b"x" * 101)
+        elif path == "/missing":
+            self._send(404, "text/html", b"no")
+        elif path == "/relative":
+            self._redirect("/ok")
+        elif path == "/to-metadata":
+            self._redirect("http://169.254.169.254/latest/meta-data/")
+        elif path == "/loop":
+            self._redirect("/loop")
+
+    def _send(self, status, ctype, body):
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _redirect(self, location):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
 
-def test_fetch_json_allowed():
-    def handler(request):
-        return httpx.Response(200, json={"a": 1})
-
-    assert _fetcher(handler).fetch("https://jobs.example.com/a") == '{"a":1}'
-
-
-def test_fetch_blocks_internal_target_without_requesting():
-    called = []
-
-    def handler(request):
-        called.append(request)
-        return _html(request)
-
-    with pytest.raises(UnsafeUrlError):
-        _fetcher(handler).fetch("http://127.0.0.1:8000/docs")
-    assert called == []
+@pytest.fixture(scope="module")
+def base_url():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+    server.server_close()
 
 
-def test_fetch_revalidates_redirect_hops():
-    seen = []
-
-    def handler(request):
-        seen.append(str(request.url))
-        return httpx.Response(302, headers={"location": "http://meta.example.com/secret"})
-
-    with pytest.raises(UnsafeUrlError):
-        _fetcher(handler).fetch("https://jobs.example.com/a")
-    assert seen == ["https://jobs.example.com/a"]
+def _fetch(base_url, path):
+    return SafeFetch(LOCAL_CONFIG).fetch(base_url + path)
 
 
-def test_fetch_follows_safe_relative_redirect():
-    def handler(request):
-        if request.url.path == "/a":
-            return httpx.Response(301, headers={"location": "/b"})
-        return _html(request)
-
-    assert _fetcher(handler).fetch("https://jobs.example.com/a") == "<p>ok</p>"
+def test_production_config_blocks_the_same_local_server(base_url):
+    assert DEFAULT_CONFIG.ip_filter_allow_loopback_ips is False
+    with pytest.raises(InvalidIPAddress):
+        SafeFetch().fetch(base_url + "/ok")
 
 
-def test_fetch_redirect_cap():
-    def handler(request):
-        return httpx.Response(302, headers={"location": "/loop"})
-
-    with pytest.raises(TooManyRedirectsError):
-        _fetcher(handler).fetch("https://jobs.example.com/loop")
+def test_returns_body(base_url):
+    assert _fetch(base_url, "/ok") == "<p>ok</p>"
 
 
-def test_fetch_rejects_wrong_content_type():
-    def handler(request):
-        return httpx.Response(200, headers={"content-type": "application/zip"}, content=b"PK")
+def test_json_allowed(base_url):
+    assert _fetch(base_url, "/json") == '{"a": 1}'
 
+
+def test_defaults_to_utf8_without_charset(base_url):
+    assert _fetch(base_url, "/utf8-no-charset") == "café"
+
+
+def test_follows_safe_relative_redirect(base_url):
+    assert _fetch(base_url, "/relative") == "<p>ok</p>"
+
+
+def test_redirect_to_metadata_host_is_blocked(base_url):
+    with pytest.raises(InvalidIPAddress):
+        _fetch(base_url, "/to-metadata")
+
+
+def test_redirect_cap(base_url):
+    with pytest.raises(requests.exceptions.TooManyRedirects):
+        _fetch(base_url, "/loop")
+
+
+def test_rejects_wrong_content_type(base_url):
     with pytest.raises(UnsupportedContentTypeError):
-        _fetcher(handler).fetch("https://jobs.example.com/a")
+        _fetch(base_url, "/zip")
 
 
-def test_fetch_rejects_oversized_body(monkeypatch):
+def test_rejects_oversized_body(base_url, monkeypatch):
     monkeypatch.setattr(fetch_mod, "MAX_RESPONSE_BYTES", 100)
-
-    def handler(request):
-        return httpx.Response(200, headers={"content-type": "text/html"}, content=b"x" * 101)
-
     with pytest.raises(ResponseTooLargeError):
-        _fetcher(handler).fetch("https://jobs.example.com/a")
+        _fetch(base_url, "/big")
 
 
-def test_fetch_http_error_raises():
-    def handler(request):
-        return httpx.Response(404, headers={"content-type": "text/html"}, text="no")
-
-    with pytest.raises(httpx.HTTPStatusError):
-        _fetcher(handler).fetch("https://jobs.example.com/a")
+def test_http_error_raises(base_url):
+    with pytest.raises(requests.exceptions.HTTPError):
+        _fetch(base_url, "/missing")

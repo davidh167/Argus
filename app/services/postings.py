@@ -365,7 +365,7 @@ def hydrate_scraped_postings(
         stmt = stmt.where(Posting.id.in_(posting_ids))
     postings = list(db.scalars(stmt))
 
-    fetch_strategy = fetch_strategy or detail_fetch_service.HttpxFetch()
+    fetch_strategy = fetch_strategy or detail_fetch_service.SafeFetch()
     hydrated = failed = 0
     for posting in postings:
         if not posting.url:

@@ -38,6 +38,9 @@ pypdf = "^6.19.0"
 python-docx = "^1.2.0"
 scipy = "^1.18.1"
 bm25s = "^0.3.14"
+requests-hardened = "^1.3.0"
+defusedcsv = "^3.0.0"
+requests = "^2.34.2"
 [build-system]
 requires = ["poetry-core>=2.0"]
 build-backend = "poetry.core.masonry.api"
@@ -71,5 +74,5 @@ files = ["app", "scripts"]
 
 # Third-party libraries that ship no type information.
 [[tool.mypy.overrides]]
-module = ["bm25s", "scipy.*"]
+module = ["bm25s", "scipy.*", "requests_hardened.*", "defusedcsv.*"]
 ignore_missing_imports = true

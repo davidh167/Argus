@@ -429,7 +429,7 @@ version = "3.5.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["research"]
+groups = ["main", "research"]
 files = [
     {file = "charset_normalizer-3.5.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:195c26fb65950f8fce54e26349852b7bdd7c5f120aeefbcc440b8a20faaed4a3"},
     {file = "charset_normalizer-3.5.2-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9373ad13ef0d2c0fb761e04e55bfdee5a08b52cef2c882c8fbe9935b1517152e"},
@@ -1074,6 +1074,18 @@ files = [
 [package.extras]
 docs = ["ipython", "matplotlib", "numpydoc", "sphinx"]
 tests = ["pytest", "pytest-cov", "pytest-xdist"]
+
+[[package]]
+name = "defusedcsv"
+version = "3.0.0"
+description = "Drop-in replacement for Python's CSV library that tries to mitigate CSV injection attacks"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "defusedcsv-3.0.0-py3-none-any.whl", hash = "sha256:5e5f2e940cefb5ac60580c8009388bfb154b7853784d34a8f0ff3a52c6130e87"},
+    {file = "defusedcsv-3.0.0.tar.gz", hash = "sha256:018678533bc375f3bf2f70f9721e48daf3800a88320dc325c1dac67ee09e2a45"},
+]
 
 [[package]]
 name = "docstring-parser"
@@ -3894,7 +3906,7 @@ version = "2.34.2"
 description = "Python HTTP for Humans."
 optional = false
 python-versions = ">=3.10"
-groups = ["research"]
+groups = ["main", "research"]
 files = [
     {file = "requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"},
     {file = "requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed"},
@@ -3909,6 +3921,21 @@ urllib3 = ">=1.26,<3"
 [package.extras]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
+
+[[package]]
+name = "requests-hardened"
+version = "1.3.0"
+description = "A library that overrides the default behaviors of the requests library, and adds new security features."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "requests_hardened-1.3.0-py3-none-any.whl", hash = "sha256:8eb300a66c8b81fe7562dc2910f4a58c72d8445e2db9d66eb25cb5bca3e5572d"},
+    {file = "requests_hardened-1.3.0.tar.gz", hash = "sha256:9c1c7ade61354a175b24f4dd835997e4d2a9db8acf17b2f9ea2aca8b3643e0aa"},
+]
+
+[package.dependencies]
+requests = ">=2.32.3,<3.0.0"
 
 [[package]]
 name = "rich"
@@ -4490,7 +4517,7 @@ version = "2.8.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.10"
-groups = ["research"]
+groups = ["main", "research"]
 files = [
     {file = "urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"},
     {file = "urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63"},
@@ -4833,4 +4860,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "ba20cd0dc761d2f92cbe09bda2b7264757f4e5d611265607ea6358b6ce5d30df"
+content-hash = "6f2c1590ca0629f27cd083f408ae6f4bab15a3d75a89983fce45ab85733b98e7"

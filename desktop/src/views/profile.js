@@ -3,7 +3,7 @@
 // a full replacement snapshot + changelog; this is the frontend for it.
 import { call, setStatus } from "../api.js";
 import { mountRepeatableList, mountTagList } from "../components.js";
-import { esc } from "../escape.js";
+import { html, render, nothing } from "../vendor/lit-html.js";
 
 let profileLoaded = false;
 let currentSnapshot = null;
@@ -33,29 +33,29 @@ const OSS_FIELDS = [
   { key: "relevance", label: "Relevance", type: "textarea" },
 ];
 
-function section(label, bodyHtml) {
-  return `<div class="detail-section"><div class="card-label">${esc(label)}</div>${bodyHtml}</div>`;
+function section(label, body) {
+  return html`<div class="detail-section"><div class="card-label">${label}</div>${body}</div>`;
+}
+
+function line(label, text) {
+  return html`<div class="verdict-line"><span class="stage">${label}</span>${text}</div>`;
 }
 
 function experienceBlock(snapshot) {
-  if (!snapshot.experience?.length) return "";
-  const rows = snapshot.experience
-    .map(
-      (e) =>
-        `<div class="verdict-line"><span class="badge">${esc(e.weight)}</span> ${esc(e.title)} @ ${esc(e.company)} (${esc(e.date_range)})${e.signals?.length ? " -- " + esc(e.signals.join(", ")) : ""}</div>`
-    )
-    .join("");
+  if (!snapshot.experience?.length) return nothing;
+  const rows = snapshot.experience.map(
+    (e) =>
+      html`<div class="verdict-line"><span class="badge">${e.weight}</span> ${e.title} @ ${e.company} (${e.date_range})${e.signals?.length ? " -- " + e.signals.join(", ") : ""}</div>`
+  );
   return section("Experience", rows);
 }
 
 function projectsBlock(snapshot) {
-  if (!snapshot.projects?.length) return "";
-  const rows = snapshot.projects
-    .map(
-      (p) =>
-        `<div class="verdict-line"><span class="badge">${esc(p.weight)}</span> ${esc(p.name)} (${esc(p.visibility)}): ${esc(p.description)}${p.stack?.length ? " -- stack: " + esc(p.stack.join(", ")) : ""}</div>`
-    )
-    .join("");
+  if (!snapshot.projects?.length) return nothing;
+  const rows = snapshot.projects.map(
+    (p) =>
+      html`<div class="verdict-line"><span class="badge">${p.weight}</span> ${p.name} (${p.visibility}): ${p.description}${p.stack?.length ? " -- stack: " + p.stack.join(", ") : ""}</div>`
+  );
   return section("Projects", rows);
 }
 
@@ -66,70 +66,47 @@ function skillsBlock(snapshot) {
     ["Developing (partial weight)", skills.developing],
     ["Coursework (low weight)", skills.coursework],
   ];
-  const rows = tiers
-    .filter(([, items]) => items?.length)
-    .map(([label, items]) => `<div class="verdict-line"><span class="stage">${label}</span>${esc(items.join(", "))}</div>`)
-    .join("");
-  return rows ? section("Skills", rows) : "";
+  const rows = tiers.filter(([, items]) => items?.length).map(([label, items]) => line(label, items.join(", ")));
+  return rows.length ? section("Skills", rows) : nothing;
 }
 
 function credentialsBlock(snapshot) {
   const creds = snapshot.credentials ?? {};
   const parts = [];
-  if (creds.education?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Education</span>${esc(creds.education.join("; "))}</div>`);
-  }
-  if (creds.oss_contributions?.length) {
-    parts.push(
-      `<div class="verdict-line"><span class="stage">OSS</span>${esc(creds.oss_contributions.map((c) => c.repo).join(", "))}</div>`
-    );
-  }
-  if (creds.publications?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Publications</span>${esc(creds.publications.join("; "))}</div>`);
-  }
-  return parts.length ? section("Credentials", parts.join("")) : "";
+  if (creds.education?.length) parts.push(line("Education", creds.education.join("; ")));
+  if (creds.oss_contributions?.length) parts.push(line("OSS", creds.oss_contributions.map((c) => c.repo).join(", ")));
+  if (creds.publications?.length) parts.push(line("Publications", creds.publications.join("; ")));
+  return parts.length ? section("Credentials", parts) : nothing;
 }
 
 function criteriaBlock(snapshot) {
   const criteria = snapshot.criteria ?? {};
   const loc = criteria.location_prefs ?? {};
-  const parts = [
-    `<div class="verdict-line"><span class="stage">Seniority</span>${esc(criteria.seniority_floor ?? "-")} to ${esc(criteria.seniority_ceiling ?? "-")}</div>`,
-  ];
-  if (criteria.target_signals?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Target signals</span>${esc(criteria.target_signals.join(", "))}</div>`);
-  }
-  if (criteria.skip_patterns?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Skip patterns</span>${esc(criteria.skip_patterns.join(", "))}</div>`);
-  }
-  if (criteria.title_fast_track?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Fast-track titles</span>${esc(criteria.title_fast_track.join(", "))}</div>`);
-  }
-  if (criteria.title_skip?.length) {
-    parts.push(`<div class="verdict-line"><span class="stage">Skip titles</span>${esc(criteria.title_skip.join(", "))}</div>`);
-  }
+  const parts = [line("Seniority", `${criteria.seniority_floor ?? "-"} to ${criteria.seniority_ceiling ?? "-"}`)];
+  if (criteria.target_signals?.length) parts.push(line("Target signals", criteria.target_signals.join(", ")));
+  if (criteria.skip_patterns?.length) parts.push(line("Skip patterns", criteria.skip_patterns.join(", ")));
+  if (criteria.title_fast_track?.length) parts.push(line("Fast-track titles", criteria.title_fast_track.join(", ")));
+  if (criteria.title_skip?.length) parts.push(line("Skip titles", criteria.title_skip.join(", ")));
   const locParts = [];
   if (loc.cities?.length) locParts.push(`cities: ${loc.cities.join(", ")}`);
   if (loc.countries?.length) locParts.push(`countries: ${loc.countries.join(", ")}`);
   if (loc.exclude_cities?.length) locParts.push(`exclude cities: ${loc.exclude_cities.join(", ")}`);
   if (loc.exclude_countries?.length) locParts.push(`exclude countries: ${loc.exclude_countries.join(", ")}`);
   locParts.push(`remote_ok: ${loc.remote_ok ?? true}`, `hybrid_ok: ${loc.hybrid_ok ?? true}`, `onsite_ok: ${loc.onsite_ok ?? true}`);
-  parts.push(`<div class="verdict-line"><span class="stage">Location prefs</span>${esc(locParts.join(" -- "))}</div>`);
-  return section("Fit criteria", parts.join(""));
+  parts.push(line("Location prefs", locParts.join(" -- ")));
+  return section("Fit criteria", parts);
 }
 
 async function loadCurrentProfile() {
   const el = document.getElementById("profileCurrent");
-  el.innerHTML = "Loading...";
+  el.textContent = "Loading...";
   const profile = await call("get_current_profile", {});
   currentSnapshot = profile.snapshot;
-  el.innerHTML =
-    `<div class="card-label">Current profile (version #${esc(profile.id)})</div>` +
-    experienceBlock(currentSnapshot) +
-    projectsBlock(currentSnapshot) +
-    skillsBlock(currentSnapshot) +
-    credentialsBlock(currentSnapshot) +
-    criteriaBlock(currentSnapshot);
+  render(
+    html`<div class="card-label">Current profile (version #${profile.id})</div>
+      ${experienceBlock(currentSnapshot)}${projectsBlock(currentSnapshot)}${skillsBlock(currentSnapshot)}${credentialsBlock(currentSnapshot)}${criteriaBlock(currentSnapshot)}`,
+    el
+  );
 }
 
 async function loadProfileVersions() {
@@ -143,8 +120,11 @@ async function loadProfileVersions() {
   versions.forEach((v) => {
     const card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = `<div class="subtitle">#${esc(v.id)} -- ${esc(v.created_at.slice(0, 10))}</div>
-      ${v.changelog ? `<div class="verdict-line">${esc(v.changelog)}</div>` : ""}`;
+    render(
+      html`<div class="subtitle">#${v.id} -- ${v.created_at.slice(0, 10)}</div>
+        ${v.changelog ? html`<div class="verdict-line">${v.changelog}</div>` : nothing}`,
+      card
+    );
     list.appendChild(card);
   });
 }
@@ -290,12 +270,14 @@ function appendProposalBubble(response) {
   const container = document.getElementById("profileChatMessages");
   const card = document.createElement("div");
   card.className = "card chat-bubble chat-bubble-assistant";
-  const questionsHtml = response.open_questions?.length
-    ? `<div class="verdict-line"><span class="stage">Worth confirming</span>${esc(response.open_questions.join("; "))}</div>`
-    : "";
-  card.innerHTML = `<div class="card-label">Proposed update</div>
-    <div class="verdict-line">${esc(response.changelog)}</div>
-    ${questionsHtml}`;
+  const body = document.createElement("div");
+  render(
+    html`<div class="card-label">Proposed update</div>
+      <div class="verdict-line">${response.changelog}</div>
+      ${response.open_questions?.length ? line("Worth confirming", response.open_questions.join("; ")) : nothing}`,
+    body
+  );
+  card.appendChild(body);
   const reviewBtn = document.createElement("button");
   reviewBtn.className = "btn-secondary";
   reviewBtn.textContent = "Review this update";

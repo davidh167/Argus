@@ -2,7 +2,7 @@
 // and the posting-id chip row (roadmap trends + batch results both need
 // "click an id, see its detail inline").
 import { call, openExternal } from "./api.js";
-import { esc } from "./escape.js";
+import { html, render } from "./vendor/lit-html.js";
 
 // Mounts a checklist-in-a-popover into an empty container element -- used
 // for the filter bar's Stage 2/3 result filters, replacing a native
@@ -158,20 +158,20 @@ export function renderVerdictLines(container, v, { includeStage1 = true } = {}) 
   if (includeStage1 && v.stage1_result) {
     const line = document.createElement("div");
     line.className = "verdict-line";
-    line.innerHTML = `<span class="stage">Stage 1</span>${esc(v.stage1_result)}${v.stage1_reason ? " -- " + esc(v.stage1_reason) : ""}`;
+    render(html`<span class="stage">Stage 1</span>${v.stage1_result}${v.stage1_reason ? " -- " + v.stage1_reason : ""}`, line);
     container.appendChild(line);
   }
   if (v.stage2_result) {
     const line = document.createElement("div");
     line.className = "verdict-line";
-    line.innerHTML = `<span class="stage">Stage 2</span>${esc(v.stage2_result)}${v.stage2_reason ? " -- " + esc(v.stage2_reason) : ""}${v.stage2_stale ? ' <span class="badge tone-weak">stale</span>' : ""}`;
+    render(html`<span class="stage">Stage 2</span>${v.stage2_result}${v.stage2_reason ? " -- " + v.stage2_reason : ""}${v.stage2_stale ? html` <span class="badge tone-weak">stale</span>` : ""}`, line);
     container.appendChild(line);
   }
   if (v.stage3_result) {
     const tone = STAGE3_TONE[v.stage3_result.verdict] ?? "";
     const line = document.createElement("div");
     line.className = tone ? `verdict-line tone-${tone}` : "verdict-line";
-    line.innerHTML = `<span class="stage">Stage 3</span>${esc(v.stage3_result.verdict)} -- ${esc(v.stage3_result.one_liner)}${v.stage3_stale ? ' <span class="badge tone-weak">stale</span>' : ""}`;
+    render(html`<span class="stage">Stage 3</span>${v.stage3_result.verdict} -- ${v.stage3_result.one_liner}${v.stage3_stale ? html` <span class="badge tone-weak">stale</span>` : ""}`, line);
     container.appendChild(line);
 
     if (v.stage3_result.stack_overlap?.length) {
@@ -382,7 +382,7 @@ export function mountRepeatableList(containerId, fieldSpecs, initialEntries) {
         fieldGetters[spec.key] = () => textarea.value.trim();
       } else if (spec.type === "select") {
         const select = document.createElement("select");
-        select.innerHTML = spec.options.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+        render(spec.options.map((o) => html`<option value=${o}>${o}</option>`), select);
         select.value = initialData?.[spec.key] ?? spec.default ?? spec.options[0];
         fieldWrap.appendChild(select);
         fieldGetters[spec.key] = () => select.value;
