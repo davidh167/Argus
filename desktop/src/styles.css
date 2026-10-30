@@ -601,16 +601,20 @@ button:disabled {
 
 /* ---- Readiness view (4.2) ---- */
 
-.readiness-columns {
+.readiness-groups {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 
-.readiness-column {
-  flex: 1 1 260px;
-  min-width: 220px;
+.readiness-group > summary {
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.readiness-group[open] > summary {
+  margin-bottom: 8px;
 }
 
 .roadmap-trends-filters {
