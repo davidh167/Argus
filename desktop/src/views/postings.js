@@ -298,51 +298,88 @@ async function offerStage3ForSurvivors(batch, result) {
   });
   card.append(text, btn);
   el.appendChild(card);
+  document.getElementById("batchesPanel").open = true;
+}
+
+async function runApplyBatch(btn, batch) {
+  btn.disabled = true;
+  const result = await applyBatch(batch);
+  btn.disabled = false;
+  if (result.status !== "ended") {
+    setStatus(`Batch ${batch.batch_id} still ${result.status} -- check back later.`);
+    document.getElementById("lastAppliedResults").innerHTML = "";
+  } else {
+    setStatus(
+      `Batch ${batch.batch_id} done: ${result.applied} applied, ${result.errors} errors, ${result.skipped_stale} skipped (stale).`,
+      "success"
+    );
+    renderLastAppliedResults(batch.batch_id, result.posting_ids);
+    await offerStage3ForSurvivors(batch, result);
+  }
+  loadPendingBatches();
+}
+
+function batchSummaryText(batch) {
+  const label = KIND_LABEL[batch.kind] ?? batch.kind;
+  return `${label}: ${batch.submitted_count} posting(s)${batch.capped ? " (capped)" : ""}, ${batch.last_status ?? "not checked yet"}`;
 }
 
 export async function loadPendingBatches() {
   const el = document.getElementById("pendingBatches");
+  const panel = document.getElementById("batchesPanel");
+  const badge = document.getElementById("batchesBadge");
   const batchList = await call("list_batches", { kind: null });
   el.innerHTML = "";
-  if (batchList.length === 0) return;
+  if (batchList.length === 0) {
+    badge.hidden = true;
+    return;
+  }
   if (!autoCheckedBatches) autoCheckPendingBatches(batchList);
 
-  batchList.forEach((batch) => {
+  // Batches still waiting on results need attention; finished ones are history.
+  const unapplied = batchList.filter((b) => !b.applied_at);
+  const applied = batchList.filter((b) => b.applied_at);
+  badge.hidden = unapplied.length === 0;
+  badge.textContent = `${unapplied.length} to apply`;
+  if (unapplied.length > 0) panel.open = true;
+
+  unapplied.forEach((batch) => {
     const card = document.createElement("div");
     card.className = "card";
-    const info = document.createElement("div");
-    const label = KIND_LABEL[batch.kind] ?? batch.kind;
     const title = document.createElement("h3");
     title.className = "batch-title";
-    title.textContent = `${label} batch ${batch.batch_id}`;
+    title.textContent = `${KIND_LABEL[batch.kind] ?? batch.kind} batch ${batch.batch_id}`;
     const subtitle = document.createElement("div");
     subtitle.className = "subtitle";
     subtitle.textContent = `submitted ${batch.submitted_count} posting(s)${batch.capped ? " (capped)" : ""} -- last status: ${batch.last_status ?? "not checked yet"}`;
-    info.append(title, subtitle);
     const applyBtn = document.createElement("button");
-    applyBtn.className = "btn-secondary batch-apply-btn";
-    applyBtn.textContent = batch.applied_at ? "Results applied -- re-check" : "Check / apply results";
-    applyBtn.addEventListener("click", async () => {
-      applyBtn.disabled = true;
-      const result = await applyBatch(batch);
-      applyBtn.disabled = false;
-      if (result.status !== "ended") {
-        setStatus(`Batch ${batch.batch_id} still ${result.status} -- check back later.`);
-        document.getElementById("lastAppliedResults").innerHTML = "";
-      } else {
-        setStatus(
-          `Batch ${batch.batch_id} done: ${result.applied} applied, ${result.errors} errors, ${result.skipped_stale} skipped (stale).`,
-          "success"
-        );
-        renderLastAppliedResults(batch.batch_id, result.posting_ids);
-        await offerStage3ForSurvivors(batch, result);
-      }
-      loadPendingBatches();
-    });
-    info.appendChild(applyBtn);
-    card.appendChild(info);
+    applyBtn.className = "btn-primary batch-apply-btn";
+    applyBtn.textContent = "Check / apply results";
+    applyBtn.addEventListener("click", () => runApplyBatch(applyBtn, batch));
+    card.append(title, subtitle, applyBtn);
     el.appendChild(card);
   });
+
+  if (applied.length > 0) {
+    const history = document.createElement("details");
+    history.className = "batch-history";
+    const summary = document.createElement("summary");
+    summary.textContent = `Finished batches (${applied.length})`;
+    history.appendChild(summary);
+    applied.forEach((batch) => {
+      const row = document.createElement("div");
+      row.className = "batch-row";
+      const text = document.createElement("span");
+      text.textContent = `${batchSummaryText(batch)} -- ${batch.batch_id}`;
+      const recheck = document.createElement("button");
+      recheck.className = "btn-link";
+      recheck.textContent = "Re-check";
+      recheck.addEventListener("click", () => runApplyBatch(recheck, batch));
+      row.append(text, recheck);
+      history.appendChild(row);
+    });
+    el.appendChild(history);
+  }
 }
 
 function renderLastAppliedResults(batchId, postingIds) {
@@ -437,10 +474,32 @@ function setupFunnelStep({
   });
 }
 
+// Count the filters set inside "More filters" so a collapsed panel still shows that something is narrowing the list.
+function updateMoreFiltersCount() {
+  const root = document.getElementById("moreFilters");
+  let active = 0;
+  root.querySelectorAll("input, select").forEach((control) => {
+    if (control.closest(".dropdown-multiselect")) return;
+    if (control.type === "checkbox") active += control.checked ? 1 : 0;
+    else if (control.value) active += 1;
+  });
+  for (const id of ["filterStage3Verdict", "filterStage2Result"]) {
+    if (document.getElementById(id).getValues().length > 0) active += 1;
+  }
+  const badge = document.getElementById("moreFiltersCount");
+  badge.hidden = active === 0;
+  badge.textContent = `${active} active`;
+  return active;
+}
+
 export function initPostingsView() {
-  mountMultiSelectDropdown("filterStage3Verdict", "Stage 3", ["Strong Fit", "Moderate Fit", "Weak Fit", "Skip"]);
-  mountMultiSelectDropdown("filterStage2Result", "Stage 2", ["fast_track", "analyze", "skip"]);
+  mountMultiSelectDropdown("filterStage3Verdict", "Fit verdict", ["Strong Fit", "Moderate Fit", "Weak Fit", "Skip"]);
+  mountMultiSelectDropdown("filterStage2Result", "Triage result", ["fast_track", "analyze", "skip"]);
   loadSavedFilters();
+  const moreFilters = document.getElementById("moreFilters");
+  moreFilters.addEventListener("input", updateMoreFiltersCount);
+  moreFilters.addEventListener("change", updateMoreFiltersCount);
+  moreFilters.open = updateMoreFiltersCount() > 0;
   clearDetail();
   document.getElementById("filterMineOnly").addEventListener("change", (e) => {
     applyMineOnlyState(e.target.checked);

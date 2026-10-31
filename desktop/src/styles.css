@@ -159,14 +159,26 @@ button:disabled {
 }
 
 .btn-secondary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--border);
   padding: 5px 10px;
   font-size: 12px;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-surface);
+  border-color: var(--accent);
+}
+
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .card {
@@ -280,6 +292,102 @@ button:disabled {
 
 .input-narrow {
   width: 90px;
+}
+
+/* ---- Postings filters and batch panel ---- */
+
+.filters-primary input[type="text"],
+.filters-primary input:not([type]) {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.inline-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.more-filters,
+.batches-panel {
+  margin-top: 10px;
+}
+
+.more-filters > summary,
+.batches-panel > summary,
+.batch-history > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.more-filters > summary:hover,
+.batches-panel > summary:hover,
+.batch-history > summary:hover {
+  color: var(--text);
+}
+
+.more-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 20px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.filter-group input:not([type="checkbox"]),
+.filter-group select {
+  width: 100%;
+}
+
+.stacked-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  width: 100%;
+}
+
+.batches-panel[open] > summary {
+  margin-bottom: 8px;
+}
+
+.batch-history {
+  margin-top: 6px;
+}
+
+.batch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dropdown-toggle {
+  color: var(--text);
+  font-weight: 500;
+  padding: 7px 10px;
+  font-size: 13px;
 }
 
 .dropdown-multiselect {

@@ -22,46 +22,17 @@
 
       <section id="postingsTab" class="tab-panel">
         <div class="filters">
-          <div class="row filters-row">
+          <div class="row filters-primary">
             <input id="filterCompany" placeholder="Company" />
             <input id="filterKeyword" placeholder="Keyword" />
-            <select id="filterKeywordScope">
+            <select id="filterKeywordScope" aria-label="Keyword searches">
               <option value="title">Title only</option>
               <option value="all">Title + JD text</option>
             </select>
             <input id="filterLocation" placeholder="Location" />
-            <select id="filterWorkplaceType">
-              <option value="">Any workplace type</option>
-              <option value="remote">Remote</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">Onsite</option>
-            </select>
-            <label class="checkbox-label"><input type="checkbox" id="filterLocationMatch" /> Matches my location</label>
-          </div>
-          <div class="row filters-row">
-            <input id="filterCompMin" type="number" placeholder="Min comp" class="input-narrow" />
-            <label class="checkbox-label"><input type="checkbox" id="filterHasComp" /> Has comp data</label>
-            <select id="filterSource">
-              <option value="">Any source</option>
-              <option value="manual_capture">Self-imported</option>
-              <option value="greenhouse_api">Greenhouse</option>
-              <option value="lever_api">Lever</option>
-              <option value="scraped">Scraped</option>
-            </select>
-            <label class="checkbox-label"><input type="checkbox" id="filterMineOnly" /> Mine only</label>
-            <input id="filterDepartment" placeholder="Department" />
-            <label class="checkbox-label">Posted after <input type="date" id="filterPostedAfter" /></label>
-            <label class="checkbox-label" title="When this app first ingested the role -- use it to scope to what a recent crawl/scrape brought in">Added to my list after <input type="date" id="filterFirstSeenAfter" /></label>
-          </div>
-          <div class="row filters-row">
-            <div id="filterStage3Verdict"></div>
-            <div id="filterStage2Result"></div>
             <label class="checkbox-label"><input type="checkbox" id="filterStarred" /> Starred only</label>
             <label class="checkbox-label"><input type="checkbox" id="filterOpenOnly" checked /> Open only</label>
-            <label class="checkbox-label"><input type="checkbox" id="filterIncludeDismissed" /> Include dismissed</label>
-          </div>
-          <div class="row filters-row">
-            <label class="checkbox-label">
+            <label class="inline-label">
               Sort
               <select id="filterSort">
                 <option value="recent">Recently seen</option>
@@ -73,26 +44,69 @@
             </label>
             <button id="applyFilters" class="btn-primary">Filter</button>
           </div>
+          <details class="more-filters" id="moreFilters">
+            <summary>More filters <span id="moreFiltersCount" class="badge" hidden></span></summary>
+            <div class="more-filters-grid">
+              <div class="filter-group">
+                <div class="card-label">Role</div>
+                <select id="filterWorkplaceType" aria-label="Workplace type">
+                  <option value="">Any workplace type</option>
+                  <option value="remote">Remote</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="onsite">Onsite</option>
+                </select>
+                <input id="filterDepartment" placeholder="Department" />
+                <select id="filterSource" aria-label="Source">
+                  <option value="">Any source</option>
+                  <option value="manual_capture">Self-imported</option>
+                  <option value="greenhouse_api">Greenhouse</option>
+                  <option value="lever_api">Lever</option>
+                  <option value="scraped">Scraped</option>
+                </select>
+                <label class="checkbox-label"><input type="checkbox" id="filterMineOnly" /> Mine only</label>
+              </div>
+              <div class="filter-group">
+                <div class="card-label">Pay and place</div>
+                <label class="checkbox-label"><input type="checkbox" id="filterLocationMatch" /> Matches my location</label>
+                <input id="filterCompMin" type="number" placeholder="Minimum comp" />
+                <label class="checkbox-label"><input type="checkbox" id="filterHasComp" /> Has comp data</label>
+              </div>
+              <div class="filter-group">
+                <div class="card-label">Dates</div>
+                <label class="stacked-label">Posted after <input type="date" id="filterPostedAfter" /></label>
+                <label class="stacked-label" title="When this app first ingested the role -- use it to scope to what a recent crawl/scrape brought in">Added to my list after <input type="date" id="filterFirstSeenAfter" /></label>
+              </div>
+              <div class="filter-group">
+                <div class="card-label">Analysis</div>
+                <div id="filterStage3Verdict"></div>
+                <div id="filterStage2Result"></div>
+                <label class="checkbox-label"><input type="checkbox" id="filterIncludeDismissed" /> Include dismissed</label>
+              </div>
+            </div>
+          </details>
         </div>
         <div class="row postings-toolbar">
           <div id="postingsCount" class="subtitle"></div>
         </div>
-        <div id="spendSummary" class="card spend-summary"></div>
-        <div class="funnel">
-          <div class="funnel-step">
-            <button id="previewStage2Btn" class="btn-secondary">Preview Stage 2 triage for these postings</button>
-            <div id="stage2PreviewResult" class="verdict-line" hidden></div>
-            <button id="submitStage2Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 2 batch</button>
+        <details class="batches-panel" id="batchesPanel">
+          <summary>Spend and batches <span id="batchesBadge" class="badge tone-moderate" hidden></span></summary>
+          <div id="spendSummary" class="card spend-summary"></div>
+          <div class="funnel">
+            <div class="funnel-step">
+              <button id="previewStage2Btn" class="btn-secondary">Preview Stage 2 triage for these postings</button>
+              <div id="stage2PreviewResult" class="verdict-line" hidden></div>
+              <button id="submitStage2Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 2 batch</button>
+            </div>
+            <div class="funnel-step">
+              <button id="previewStage3Btn" class="btn-secondary">Preview Stage 3 analysis for these postings</button>
+              <div id="stage3PreviewResult" class="verdict-line" hidden></div>
+              <button id="submitStage3Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 3 batch</button>
+            </div>
           </div>
-          <div class="funnel-step">
-            <button id="previewStage3Btn" class="btn-secondary">Preview Stage 3 analysis for these postings</button>
-            <div id="stage3PreviewResult" class="verdict-line" hidden></div>
-            <button id="submitStage3Btn" class="btn-primary funnel-submit-btn" hidden>Submit Stage 3 batch</button>
-          </div>
-        </div>
-        <div id="pendingBatches" class="list"></div>
-        <div id="survivorsPrompt"></div>
-        <div id="lastAppliedResults" class="list"></div>
+          <div id="pendingBatches" class="list"></div>
+          <div id="survivorsPrompt"></div>
+          <div id="lastAppliedResults" class="list"></div>
+        </details>
         <div class="postings-split">
           <div id="postingsList" class="list postings-list-pane"></div>
           <div id="postingDetail" class="posting-detail-pane"></div>
