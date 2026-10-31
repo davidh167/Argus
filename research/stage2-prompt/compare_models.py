@@ -7,6 +7,7 @@ production runs about as well as those agree with each other is not worse. Also 
 requests, refusals, truncated outputs and token use. Read-only; nothing is written to the database.
 Run (after the batches have ended): PYTHONPATH=. poetry run python research/stage2-prompt/compare_models.py TAG [TAG ...]"""
 
+import collections
 import itertools
 import json
 import sys
@@ -25,6 +26,13 @@ def disagreement(a: dict[int, str], b: dict[int, str]) -> tuple[int, int]:
     """(postings whose verdicts differ, postings both runs have a verdict for)."""
     common = sorted(set(a) & set(b))
     return sum(a[i] != b[i] for i in common), len(common)
+
+
+def transitions(a: dict[int, str], b: dict[int, str]) -> list[str]:
+    """One line per (verdict in a -> verdict in b) pair, most common first, for postings both runs cover."""
+    common = sorted(set(a) & set(b))
+    counts = collections.Counter((a[i], b[i]) for i in common)
+    return [f"    {x} -> {y}: {n}" for (x, y), n in counts.most_common()]
 
 
 def summarize(batch_file: str, client: Anthropic):
@@ -82,4 +90,14 @@ if __name__ == "__main__":
         if (a, b) == ("stored", "control"):
             label += " (production model's own noise)"
         table.append(f"| {label} | {n} | {of} |")
-    print("\n".join(["# Stage 2 model comparison", "", *lines, *table]))
+    moves = []
+    for a, b in itertools.combinations(["stored", *tags], 2):
+        moves += [
+            f"{a} -> {b} (rows: verdict in {a}, then in {b}):",
+            *transitions(runs[a], runs[b]),
+        ]
+    print(
+        "\n".join(
+            ["# Stage 2 model comparison", "", *lines, *table, "", "## Verdict transitions", *moves]
+        )
+    )
