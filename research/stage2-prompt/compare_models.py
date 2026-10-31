@@ -118,3 +118,14 @@ if __name__ == "__main__":
             ]
         )
     )
+
+    last = tags[-1]
+    changed = sorted(
+        i for i in runs[last] if i in runs["stored"] and runs["stored"][i] != runs[last][i]
+    )
+    if changed:
+        with SessionLocal() as db:
+            titles = dict(db.query(Posting.id, Posting.title).filter(Posting.id.in_(changed)))
+        print(f"\n## Roles whose verdict changed, stored -> {last} (first 40)")
+        for i in changed[:40]:
+            print(f"    {i} {titles[i][:70]}: {runs['stored'][i]} -> {runs[last][i]}")
