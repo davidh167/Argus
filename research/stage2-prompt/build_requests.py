@@ -4,7 +4,7 @@ estimate and writes nothing to the API or DB. Submitting is a separate, explicit
 `--submit` that the user runs (it costs money); the batch id is saved to
 data/batch.json. Results are NOT applied to the DB -- compare.py reads them.
 
-Run: PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py [--control | --temp0 | --model ID --tag NAME] [--tag NAME] [--submit]
+Run: PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py [--dismissed] [--control | --temp0 | --model ID --tag NAME] [--tag NAME] [--submit]
 
 --model ID re-runs the PRODUCTION prompt on another model (e.g. claude-haiku-5-5), which needs --tag so
 it cannot overwrite another batch's id; --max-tokens N overrides the production output limit (256) for
@@ -31,6 +31,9 @@ from app.services.stage2_batch import build_request
 HERE = Path(__file__).parent
 CONTROL = "--control" in sys.argv  # re-run the PRODUCTION prompt
 TEMP0 = "--temp0" in sys.argv  # production prompt, with temperature=0 sent as a raw request field
+DISMISSED = (
+    "--dismissed" in sys.argv
+)  # use the roles you dismissed (negatives) instead of the interest set
 TAG = sys.argv[sys.argv.index("--tag") + 1] if "--tag" in sys.argv else None
 MODEL = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else None
 if MODEL and not TAG:
@@ -47,15 +50,24 @@ BATCH_FILE = (
 )
 
 with SessionLocal() as db:
-    postings = list(
-        db.scalars(
-            select(Posting)
-            .join(Verdict, Verdict.id == latest_verdict_id_subquery())
-            .where(Verdict.stage2_key_skills.is_not(None))
+    if DISMISSED:
+        picked = list(
+            db.scalars(
+                select(Posting)
+                .join(Verdict, Verdict.id == latest_verdict_id_subquery())
+                .where(Posting.dismissed_at.is_not(None), Posting.raw_jd_text.is_not(None))
+            )
         )
-    )
-    weights = roadmap.interest_weights(db, postings)
-    picked = [p for p in postings if weights[p.id] >= roadmap.INTEREST_SET_MIN_WEIGHT]
+    else:
+        postings = list(
+            db.scalars(
+                select(Posting)
+                .join(Verdict, Verdict.id == latest_verdict_id_subquery())
+                .where(Verdict.stage2_key_skills.is_not(None))
+            )
+        )
+        weights = roadmap.interest_weights(db, postings)
+        picked = [p for p in postings if weights[p.id] >= roadmap.INTEREST_SET_MIN_WEIGHT]
     requests = []
     for p in picked:
         base = build_request(db, p)

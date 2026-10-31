@@ -77,10 +77,11 @@ if __name__ == "__main__":
             f"{usage['in']:,} input / {usage['out']:,} output tokens"
         )
         lines += [f"    problem: {p}" for p in problems[:3]]
+    ids = set(runs["control"]).union(*(runs[t] for t in tags))
     with SessionLocal() as db:
         runs["stored"] = {
             p.id: p.verdicts[0].stage2_result
-            for p in db.query(Posting).filter(Posting.id.in_(list(runs["control"])))
+            for p in db.query(Posting).filter(Posting.id.in_(list(ids)))
             if p.verdicts[0].stage2_result is not None
         }
     table = ["", "| comparison | verdicts differ | of |", "|---|---|---|"]
@@ -90,6 +91,11 @@ if __name__ == "__main__":
         if (a, b) == ("stored", "control"):
             label += " (production model's own noise)"
         table.append(f"| {label} | {n} | {of} |")
+    spread = [
+        f"{name}: "
+        + ", ".join(f"{v} {n}" for v, n in sorted(collections.Counter(run.values()).items()))
+        for name, run in runs.items()
+    ]
     moves = []
     for a, b in itertools.combinations(["stored", *tags], 2):
         moves += [
@@ -98,6 +104,17 @@ if __name__ == "__main__":
         ]
     print(
         "\n".join(
-            ["# Stage 2 model comparison", "", *lines, *table, "", "## Verdict transitions", *moves]
+            [
+                "# Stage 2 model comparison",
+                "",
+                *lines,
+                *table,
+                "",
+                "## Verdicts per run",
+                *spread,
+                "",
+                "## Verdict transitions",
+                *moves,
+            ]
         )
     )

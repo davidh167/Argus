@@ -85,3 +85,19 @@ neutral one. Without it the script builds the old v2 candidate prompt. Read the 
 is the noise floor; `control vs neutral2` and `stored vs neutral2` should be about that size. Verdict
 differences well above it mean the wording matters. The key_skills themselves are not compared by
 `compare_models.py`; use `compare.py`-style inspection of the batch results for spelling consistency.
+
+## Checking the negatives: dismissed roles
+
+The interest set (starred or chosen roles) only shows whether good roles survive Stage 2, so a looser prompt
+scores better by construction. To see whether Stage 2 still filters, run the same prompt on roles you
+dismissed:
+
+```bash
+PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py --control --dismissed --tag negs            # dry run, prints count and cost
+PYTHONPATH=. poetry run python research/stage2-prompt/build_requests.py --control --dismissed --tag negs --submit   # spends money
+PYTHONPATH=. poetry run python research/stage2-prompt/compare_models.py negs
+```
+
+Read the "Verdicts per run" lines: the share of dismissed roles Stage 2 still marks `skip` is the number that
+matters. Caveat: a role can be dismissed for reasons other than fit (a duplicate, a closed listing), so treat
+the skip share as a lower bound on how well the filter works.
