@@ -64,7 +64,7 @@ Chrome extension ─┐
 MCP server ───────┼─► FastAPI backend ─► PostgreSQL
 Desktop app (Rust)┘        │
                            ├─► Anthropic API (Batch API for triage and analysis)
-                           └─► embeddings: local Ollama, or in-process via the native core
+                           └─► embeddings: in-process via the native core (default), or local Ollama
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pipeline, profile versioning and ranking work.
@@ -72,7 +72,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pipeline, profile versioning 
 ## Quick start
 
 Requirements: Docker (the daemon must be running), Python 3.12+, [Poetry](https://python-poetry.org/),
-and an Anthropic API key. The desktop app additionally needs Rust and the Tauri CLI
+an Anthropic API key, and, for the default embeddings backend, CMake, Ninja and llama.cpp
+(`brew install cmake ninja llama.cpp`). The desktop app additionally needs Rust and the Tauri CLI
 (`cargo install tauri-cli`).
 
 ```bash
@@ -93,9 +94,19 @@ Every route except `/health` needs the token, for example
 is gitignored. Be honest in `skills.core` versus `skills.developing` versus `skills.coursework`: the
 fit analysis weights them very differently.
 
-Embeddings for the skills view default to a local [Ollama](https://ollama.com) server
-(`ollama pull nomic-embed-text`). To run without Ollama, build the native core and set
-`EMBEDDINGS_BACKEND=native` (see [native/README.md](native/README.md)).
+Embeddings for the skills view run in-process through the native core (`EMBEDDINGS_BACKEND=native`, the
+default), so two one-time steps are needed before the skills view works:
+
+```bash
+cmake -S native -B native/build-release -G Ninja && cmake --build native/build-release   # builds libargus
+python3 native/tools/fetch_model.py      # downloads the embedding model (274 MB), checksum-verified
+```
+
+Phrase vectors are saved in `~/.local/share/job-search-tool/embeddings.sqlite` (`ARGUS_INDEX_PATH`), so a
+restart does not re-embed them. If the library or model is missing the backend raises and names the
+command to run; it never falls back silently. To use a local [Ollama](https://ollama.com) server
+instead (`ollama pull nomic-embed-text`), set `EMBEDDINGS_BACKEND=ollama`. Details:
+[native/README.md](native/README.md).
 
 ### Try it with demo data (no API key)
 
@@ -189,7 +200,7 @@ The evaluation harnesses and reports behind the Results table are in [research/R
   profile. Stage 1 does nothing until the profile lists title phrases (`title_fast_track`, `title_skip`),
   and a role type the old prompt excluded by name now has to be in `skip_patterns`.
 - The desktop app and the native core are developed and tested on macOS (Apple silicon) only.
-- The native core is not wired into the desktop app yet; the backend can use it for embeddings.
+- The native core is not wired into the desktop app yet; the backend uses it for embeddings.
 - Evaluations in `research/` come from one user's postings and choices, so sample sizes are small.
 
 ## Notes

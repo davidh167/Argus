@@ -9,7 +9,7 @@ fusion of them?
 ```bash
 poetry install --with research
 PYTHONPATH=. poetry run python research/ranking-eval/export_snapshot.py  # read-only DB -> data/
-PYTHONPATH=. poetry run python research/ranking-eval/scorers.py          # needs Ollama + nomic-embed-text
+PYTHONPATH=. poetry run python research/ranking-eval/scorers.py          # embeddings: native by default; the reported results used EMBEDDINGS_BACKEND=ollama (Ollama + nomic-embed-text)
 PYTHONPATH=. poetry run python research/ranking-eval/evaluate.py         # -> reports/report.md, results.json
 ```
 

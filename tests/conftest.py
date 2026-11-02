@@ -68,3 +68,13 @@ def _no_real_anthropic_calls(monkeypatch):
     "analyze"-bucket title would otherwise make a live (paid) Stage 2 call. Tests that need a
     configured key set their own (patch.object(..., "fake-key")) together with a mocked client."""
     monkeypatch.setattr(settings, "anthropic_api_key", "")
+
+
+@pytest.fixture(autouse=True)
+def _isolated_embedding_index(monkeypatch, tmp_path_factory):
+    """The default embeddings backend is native, which persists vectors in an index file. No test may
+    write to the user's real one, so every test gets a throwaway path. Tests that exercise embeddings
+    choose their backend explicitly (see tests/test_native_embedder.py); the rest patch embed_texts."""
+    monkeypatch.setattr(
+        settings, "argus_index_path", str(tmp_path_factory.mktemp("embeddings") / "index.sqlite")
+    )
