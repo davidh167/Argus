@@ -11,6 +11,7 @@ postings and is regenerable), and commit only aggregate `reports/`. Extra depend
 | [cluster-quality](cluster-quality/README.md) | How should the skill phrases extracted from postings be clustered? |
 | [stage2-prompt](stage2-prompt/README.md) | Can the triage prompt emit cleaner, more consistent skill names without changing verdicts? |
 | [skill-judgment](skill-judgment/README.md) | Can retrieval plus an LLM judge decide whether a profile demonstrates a skill? |
+| [native-engine](native-engine/README.md) | Where does the time go in the Python similar-roles, ranking and market-demand code? |
 
 The harnesses read one user's postings and choices, so sample sizes are small (tens of queries) and
 every report states its confidence intervals and caveats. The C++/Rust retrieval work in
