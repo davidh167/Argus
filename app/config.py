@@ -8,12 +8,16 @@ class Settings(BaseSettings):
     database_url: str
     anthropic_api_key: str | None = None
     api_token: str
-    # Where phrase/document embeddings come from. "ollama" (default) calls a local Ollama server;
-    # "native" loads the GGUF model in-process through libargus (native), with no
-    # Ollama needed. "native" requires ARGUS_MODEL_PATH; ARGUS_LIB_PATH defaults to the repo's release build.
-    embeddings_backend: Literal["ollama", "native"] = "ollama"
+    # Where phrase/document embeddings come from. "native" (default) loads the GGUF model in-process
+    # through libargus (native/) and persists vectors in an index file; it raises, naming the build and
+    # model-download commands, if the library or model is missing. "ollama" calls a local Ollama server.
+    # There is no automatic switch between them.
+    embeddings_backend: Literal["ollama", "native"] = "native"
+    # Defaults (see app/native): the model native/tools/fetch_model.py downloads, the release build of
+    # libargus under native/, and an index file next to the model directory.
     argus_model_path: str | None = None
     argus_lib_path: str | None = None
+    argus_index_path: str | None = None
 
     # Absolute, so the MCP server (which a client launches from any directory) finds the same .env.
     model_config = SettingsConfigDict(
