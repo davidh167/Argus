@@ -49,7 +49,7 @@ ARGUS_API void argus_close(argus_handle* h);
 
 /* Like argus_open, but the index also stores dense vectors of dimension dim (> 0) and can answer
  * nearest-neighbour and hybrid queries. Vectors live in the SQLite file (the source of truth);
- * an in-memory HNSW index is rebuilt from them on open. Reopening an existing file with a
+ * an in-memory HNSW index is built from them on the first dense or hybrid search (stores and reads back never pay for it). Reopening an existing file with a
  * different dim is an error (ARGUS_ERR_ARG). */
 ARGUS_API argus_status argus_open_with_vectors(const char* path, size_t dim, argus_handle** out);
 
@@ -80,6 +80,33 @@ ARGUS_API argus_status argus_search_dense(argus_handle* h, const float* query_ve
  * query_vec, each cut at the top 100 candidates. score is the fused RRF score, best first. */
 ARGUS_API argus_status argus_search_hybrid(argus_handle* h, const char* query, size_t query_len, const float* query_vec,
                                      size_t dim, size_t capacity, argus_hit* hits, size_t* n_hits);
+
+/* ---- Reading back what was stored ----------------------------------------------------
+ * For callers that use the index as a persistent key -> (text, vector) store. found is set to 1 when
+ * the entry exists and 0 otherwise (a missing entry is not an error).
+ */
+
+/* Stores n (id, text, vector) records in one transaction, each replacing any existing document and
+ * vector with that id: all of them are written or none. texts/lens are n UTF-8 strings; vecs is a
+ * row-major n x dim float buffer (dim must equal the index's dimension). One commit for the batch is
+ * what makes bulk loading fast; calling argus_upsert and argus_upsert_vector per item commits twice
+ * per item. n == 0 is a no-op. */
+ARGUS_API argus_status argus_upsert_records(argus_handle* h, size_t n, const int64_t* ids, const char* const* texts,
+                                      const size_t* lens, const float* vecs, size_t dim);
+
+/* Copies the vector stored for id into out, a caller-allocated buffer of dim floats (dim must equal
+ * the index's dimension). Bit-exact with what argus_upsert_vector stored. */
+ARGUS_API argus_status argus_get_vector(argus_handle* h, int64_t id, float* out, size_t dim, int* found);
+
+/* Copies the text stored by argus_upsert for id into buf (at most cap bytes, no NUL terminator).
+ * *len receives the full length in bytes, which may exceed cap; call again with a larger buffer. */
+ARGUS_API argus_status argus_get_text(argus_handle* h, int64_t id, char* buf, size_t cap, size_t* len, int* found);
+
+/* Small string key/value metadata kept in the same file (e.g. which model produced the vectors).
+ * Keys are separate from the library's own bookkeeping. argus_meta_get follows the argus_get_text
+ * buffer convention. Works on any index, with or without vectors. */
+ARGUS_API argus_status argus_meta_set(argus_handle* h, const char* key, const char* value);
+ARGUS_API argus_status argus_meta_get(argus_handle* h, const char* key, char* buf, size_t cap, size_t* len, int* found);
 
 /* ---- Embeddings (llama.cpp) ------------------------------------------------------
  * An embedder owns a loaded GGUF embedding model (e.g. nomic-embed-text-v1.5). Vectors

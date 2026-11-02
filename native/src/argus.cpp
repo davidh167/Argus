@@ -82,10 +82,10 @@ struct StmtReset {
 struct argus_handle {
     std::mutex mu;
     Db db;
-    Stmt del, ins, count, search, vec_del, vec_ins, vec_all;
+    Stmt del, ins, count, search, vec_del, vec_ins, vec_all, vec_get, text_get, meta_get, meta_set;
     std::string error;
     std::size_t dim = 0;                   // 0: no vector index
-    std::unique_ptr<index_dense_t> vindex;  // in-memory HNSW, rebuilt from the vecs table on open
+    std::unique_ptr<index_dense_t> vindex;  // in-memory HNSW, built from the vecs table on the first dense/hybrid search
 
     bool fail(int rc) {
         error = db ? sqlite3_errmsg(db.get()) : sqlite3_errstr(rc);
@@ -175,7 +175,10 @@ static argus_status open_impl(const char* path, std::size_t dim, argus_handle** 
             // error message from; callers get the status code.
             return rc == SQLITE_NOMEM ? ARGUS_ERR_NOMEM : ARGUS_ERR_DB;
         }
-        if (!h->exec("PRAGMA journal_mode=WAL;") ||
+        // WAL with synchronous=NORMAL: commits append to the log without an fsync each, so thousands of
+        // small upserts stay fast. A power loss can drop the last commits but never corrupts the file,
+        // which is the right trade for an index that is a rebuildable cache of other data.
+        if (!h->exec("PRAGMA journal_mode=WAL;") || !h->exec("PRAGMA synchronous=NORMAL;") ||
             !h->exec("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(text, tokenize='unicode61 remove_diacritics 2');") ||
             !h->exec("CREATE TABLE IF NOT EXISTS vecs(id INTEGER PRIMARY KEY, v BLOB NOT NULL);") ||
             !h->exec("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT NOT NULL);") ||
@@ -185,6 +188,10 @@ static argus_status open_impl(const char* path, std::size_t dim, argus_handle** 
             !h->prepare(h->vec_del, "DELETE FROM vecs WHERE id = ?1;") ||
             !h->prepare(h->vec_ins, "INSERT OR REPLACE INTO vecs(id, v) VALUES(?1, ?2);") ||
             !h->prepare(h->vec_all, "SELECT id, v FROM vecs;") ||
+            !h->prepare(h->vec_get, "SELECT v FROM vecs WHERE id = ?1;") ||
+            !h->prepare(h->text_get, "SELECT text FROM docs WHERE rowid = ?1;") ||
+            !h->prepare(h->meta_get, "SELECT v FROM meta WHERE k = ?1;") ||
+            !h->prepare(h->meta_set, "INSERT OR REPLACE INTO meta(k, v) VALUES(?1, ?2);") ||
             !h->prepare(h->search, "SELECT rowid, -bm25(docs) FROM docs WHERE docs MATCH ?1 ORDER BY bm25(docs) LIMIT ?2;")) {
             return ARGUS_ERR_DB;
         }
@@ -198,7 +205,6 @@ static argus_status open_impl(const char* path, std::size_t dim, argus_handle** 
                 return ARGUS_ERR_DB;
             }
             h->dim = dim;
-            if (const auto st = h->rebuild_vector_index(); st != ARGUS_OK) return st;
         }
         *out = h.release();
         return ARGUS_OK;
@@ -307,9 +313,17 @@ argus_status bm25_locked(argus_handle* h, const std::string& fts, std::size_t ca
     return ARGUS_OK;
 }
 
-// Cosine-similarity ranking, best first. Caller holds h->mu and has checked h->vindex.
+// Cosine-similarity ranking, best first. Caller holds h->mu and has checked h->dim.
 argus_status dense_locked(argus_handle* h, const float* q, std::size_t capacity, std::vector<argus_hit>& out) {
     out.clear();
+    // Building the HNSW graph costs about a millisecond per vector, so callers that only store and read
+    // vectors back never pay for it; the first search does.
+    if (!h->vindex) {
+        if (const auto st = h->rebuild_vector_index(); st != ARGUS_OK) {
+            h->vindex.reset();  // never leave a half-filled graph behind
+            return st;
+        }
+    }
     if (capacity == 0 || h->vindex->size() == 0) return ARGUS_OK;
     const auto found = h->vindex->search(q, capacity);
     if (!found) {
@@ -365,8 +379,57 @@ argus_status argus_upsert_vector(argus_handle* h, int64_t id, const float* vec, 
             }
         }
         if (!h->exec("COMMIT;")) return ARGUS_ERR_DB;
-        // The file is the source of truth: if the in-memory update fails the next open rebuilds it.
-        return h->index_put(id, vec);
+        // The file is the source of truth. The in-memory graph is kept current only once a search has built it;
+        // if this update fails, the next open rebuilds it from the file.
+        return h->vindex ? h->index_put(id, vec) : ARGUS_OK;
+    } catch (const std::bad_alloc&) {
+        return ARGUS_ERR_NOMEM;
+    }
+}
+
+argus_status argus_upsert_records(argus_handle* h, size_t n, const int64_t* ids, const char* const* texts,
+                              const size_t* lens, const float* vecs, size_t dim) {
+    if (h == nullptr || h->dim == 0 || dim != h->dim) return ARGUS_ERR_ARG;
+    if (n == 0) return ARGUS_OK;
+    if (ids == nullptr || texts == nullptr || lens == nullptr || vecs == nullptr) return ARGUS_ERR_ARG;
+    for (size_t i = 0; i < n; ++i) {
+        if (texts[i] == nullptr && lens[i] > 0) return ARGUS_ERR_ARG;
+    }
+    try {
+        std::lock_guard<std::mutex> lock(h->mu);
+        if (!h->exec("BEGIN;")) return ARGUS_ERR_DB;
+        bool ok = true;
+        for (size_t i = 0; i < n && ok; ++i) {
+            {
+                StmtReset r(h->del.get());
+                sqlite3_bind_int64(h->del.get(), 1, ids[i]);
+                ok = sqlite3_step(h->del.get()) == SQLITE_DONE || h->fail(sqlite3_errcode(h->db.get()));
+            }
+            if (ok) {
+                StmtReset r(h->ins.get());
+                sqlite3_bind_int64(h->ins.get(), 1, ids[i]);
+                sqlite3_bind_text(h->ins.get(), 2, texts[i] ? texts[i] : "", static_cast<int>(lens[i]), SQLITE_STATIC);
+                ok = sqlite3_step(h->ins.get()) == SQLITE_DONE || h->fail(sqlite3_errcode(h->db.get()));
+            }
+            if (ok) {
+                StmtReset r(h->vec_ins.get());
+                sqlite3_bind_int64(h->vec_ins.get(), 1, ids[i]);
+                sqlite3_bind_blob(h->vec_ins.get(), 2, vecs + i * dim, static_cast<int>(dim * sizeof(float)),
+                                  SQLITE_STATIC);
+                ok = sqlite3_step(h->vec_ins.get()) == SQLITE_DONE || h->fail(sqlite3_errcode(h->db.get()));
+            }
+        }
+        if (!ok) {
+            h->exec("ROLLBACK;");
+            return ARGUS_ERR_DB;
+        }
+        if (!h->exec("COMMIT;")) return ARGUS_ERR_DB;
+        if (h->vindex) {
+            for (size_t i = 0; i < n; ++i) {
+                if (const auto st = h->index_put(ids[i], vecs + i * dim); st != ARGUS_OK) return st;
+            }
+        }
+        return ARGUS_OK;
     } catch (const std::bad_alloc&) {
         return ARGUS_ERR_NOMEM;
     }
@@ -413,6 +476,104 @@ argus_status argus_search_hybrid(argus_handle* h, const char* query, size_t quer
             return a.score != b.score ? a.score > b.score : a.id < b.id;  // deterministic ties
         });
         return copy_out(ranked, capacity, hits, n_hits);
+    } catch (const std::bad_alloc&) {
+        return ARGUS_ERR_NOMEM;
+    }
+}
+
+argus_status argus_get_vector(argus_handle* h, int64_t id, float* out, size_t dim, int* found) {
+    if (h == nullptr || out == nullptr || found == nullptr || h->dim == 0 || dim != h->dim) return ARGUS_ERR_ARG;
+    *found = 0;
+    try {
+        std::lock_guard<std::mutex> lock(h->mu);
+        StmtReset r(h->vec_get.get());
+        sqlite3_bind_int64(h->vec_get.get(), 1, id);
+        const int rc = sqlite3_step(h->vec_get.get());
+        if (rc == SQLITE_DONE) return ARGUS_OK;
+        if (rc != SQLITE_ROW) {
+            h->fail(rc);
+            return ARGUS_ERR_DB;
+        }
+        if (static_cast<std::size_t>(sqlite3_column_bytes(h->vec_get.get(), 0)) != dim * sizeof(float)) {
+            h->error = "stored vector has the wrong size";
+            return ARGUS_ERR_DB;
+        }
+        std::memcpy(out, sqlite3_column_blob(h->vec_get.get(), 0), dim * sizeof(float));
+        *found = 1;
+        return ARGUS_OK;
+    } catch (const std::bad_alloc&) {
+        return ARGUS_ERR_NOMEM;
+    }
+}
+
+}  // extern "C"
+
+namespace {
+
+// Copies the first column of a row-returning statement into buf. Caller holds h->mu and has bound
+// the statement's parameters; the statement is reset on return.
+argus_status read_text_column(argus_handle* h, sqlite3_stmt* stmt, char* buf, size_t cap, size_t* len, int* found) {
+    StmtReset r(stmt);
+    const int rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE) return ARGUS_OK;
+    if (rc != SQLITE_ROW) {
+        h->fail(rc);
+        return ARGUS_ERR_DB;
+    }
+    const auto size = static_cast<std::size_t>(sqlite3_column_bytes(stmt, 0));
+    if (size > 0) std::memcpy(buf, sqlite3_column_text(stmt, 0), std::min(cap, size));
+    *len = size;
+    *found = 1;
+    return ARGUS_OK;
+}
+
+}  // namespace
+
+extern "C" {
+
+argus_status argus_get_text(argus_handle* h, int64_t id, char* buf, size_t cap, size_t* len, int* found) {
+    if (h == nullptr || len == nullptr || found == nullptr || (buf == nullptr && cap > 0)) return ARGUS_ERR_ARG;
+    *len = 0;
+    *found = 0;
+    try {
+        std::lock_guard<std::mutex> lock(h->mu);
+        sqlite3_bind_int64(h->text_get.get(), 1, id);
+        return read_text_column(h, h->text_get.get(), buf, cap, len, found);
+    } catch (const std::bad_alloc&) {
+        return ARGUS_ERR_NOMEM;
+    }
+}
+
+// User metadata is stored under a "user:" prefix so it can never overwrite the library's own keys (dim).
+argus_status argus_meta_set(argus_handle* h, const char* key, const char* value) {
+    if (h == nullptr || key == nullptr || value == nullptr) return ARGUS_ERR_ARG;
+    try {
+        std::lock_guard<std::mutex> lock(h->mu);
+        const std::string k = std::string("user:") + key;
+        StmtReset r(h->meta_set.get());
+        sqlite3_bind_text(h->meta_set.get(), 1, k.c_str(), static_cast<int>(k.size()), SQLITE_STATIC);
+        sqlite3_bind_text(h->meta_set.get(), 2, value, -1, SQLITE_STATIC);
+        if (sqlite3_step(h->meta_set.get()) != SQLITE_DONE) {
+            h->fail(sqlite3_errcode(h->db.get()));
+            return ARGUS_ERR_DB;
+        }
+        return ARGUS_OK;
+    } catch (const std::bad_alloc&) {
+        return ARGUS_ERR_NOMEM;
+    }
+}
+
+argus_status argus_meta_get(argus_handle* h, const char* key, char* buf, size_t cap, size_t* len, int* found) {
+    if (h == nullptr || key == nullptr || len == nullptr || found == nullptr || (buf == nullptr && cap > 0)) {
+        return ARGUS_ERR_ARG;
+    }
+    *len = 0;
+    *found = 0;
+    try {
+        std::lock_guard<std::mutex> lock(h->mu);
+        const std::string k = std::string("user:") + key;
+        sqlite3_bind_text(h->meta_get.get(), 1, k.c_str(), static_cast<int>(k.size()), SQLITE_STATIC);
+        return read_text_column(h, h->meta_get.get(), buf, cap, len, found);
     } catch (const std::bad_alloc&) {
         return ARGUS_ERR_NOMEM;
     }

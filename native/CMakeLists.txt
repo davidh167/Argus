@@ -52,7 +52,7 @@ install(FILES include/argus.h DESTINATION include)
 if(ARGUS_BUILD_TESTS)
 enable_testing()
 find_package(Catch2 3 REQUIRED)
-add_executable(argus_tests tests/test_index.cpp tests/test_embedder.cpp tests/test_vectors.cpp)
+add_executable(argus_tests tests/test_index.cpp tests/test_embedder.cpp tests/test_vectors.cpp tests/test_store.cpp)
 target_link_libraries(argus_tests PRIVATE argus Catch2::Catch2WithMain)
 include(Catch)
 # Catch2 from Homebrew is not built with ASan; libc++ container-overflow annotations then disagree

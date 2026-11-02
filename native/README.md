@@ -2,8 +2,8 @@
 
 An optional in-process retrieval library: keyword search, embeddings and vector search behind a stable C
 API, with Rust bindings. It exists so the app does not need a separate embedding server (Ollama) or, for
-retrieval, a database server. It is **not** wired into the desktop app yet; today the Python backend can
-use it for embeddings (`EMBEDDINGS_BACKEND=native`).
+retrieval, a database server. It is **not** wired into the desktop app yet; today the Python backend
+uses it for embeddings (`EMBEDDINGS_BACKEND=native`, the default) and for a persistent phrase-vector cache.
 
 The rule for this component is to use existing libraries and write only the glue, the interface and the
 measurements:
@@ -18,7 +18,8 @@ measurements:
 ## Layout
 
 - `include/argus.h` — the C API: `argus_open[_with_vectors]`, `argus_upsert`, `argus_upsert_vector`,
-  `argus_search_bm25 | dense | hybrid`, `argus_embedder_open`, `argus_embed_batch`. Ownership is explicit
+  `argus_search_bm25 | dense | hybrid`, `argus_upsert_records | get_vector | get_text | meta_get | meta_set` (the index as a
+  persistent key -> text/vector store), `argus_embedder_open`, `argus_embed_batch`. Ownership is explicit
   (callers allocate result buffers), calls on a handle are serialized, nothing throws across the boundary.
 - `src/` — index (`argus.cpp`) and embedder (`embedder.cpp`).
 - `rust/argus-core/` — safe Rust wrapper. `build.rs` builds the C++ with the `cmake` crate and generates
@@ -43,7 +44,7 @@ google-benchmark llama.cpp`). usearch is fetched by CMake.
 
 ```bash
 cmake -S native -B native/build -G Ninja -DARGUS_SANITIZE=ON -DCMAKE_BUILD_TYPE=Debug
-cmake --build native/build && ctest --test-dir native/build          # 21 tests under ASan + UBSan
+cmake --build native/build && ctest --test-dir native/build          # 29 tests under ASan + UBSan
 cmake -S native -B native/build-release -G Ninja && cmake --build native/build-release
 (cd native/rust/argus-core && cargo test)                            # 20 tests
 python3 native/tools/fetch_model.py                                  # prints the model path
@@ -51,8 +52,17 @@ python3 native/tools/fetch_model.py                                  # prints th
 
 Embedder tests skip when no model is found (`ARGUS_MODEL`, or an Ollama `nomic-embed-text` blob).
 
-To use it from the backend, set in `.env`: `EMBEDDINGS_BACKEND=native` and `ARGUS_MODEL_PATH=<model.gguf>`
-(`ARGUS_LIB_PATH` defaults to `native/build-release/libargus.dylib`).
+The backend uses it by default; there is nothing to set if the release library is built
+(`native/build-release/libargus.dylib`) and the model is fetched to its default directory by
+`fetch_model.py`. `ARGUS_LIB_PATH`, `ARGUS_MODEL_PATH` and `ARGUS_INDEX_PATH` override the defaults, and
+`EMBEDDINGS_BACKEND=ollama` opts back into a local Ollama server. A missing library or model raises with the
+command to run; there is no fallback.
+
+**Persistent vector cache** (`app/services/vector_cache.py`). Each phrase's vector is saved in an index file
+keyed by a 64-bit BLAKE2b hash of the text, with the text stored beside it and compared on every lookup, so a
+hash collision is logged and the colliding phrase is re-embedded instead of getting another phrase's vector.
+The file is stamped with the model file's SHA-256 (re-hashed only when its size or mtime changes); opening it
+with a different model raises and says to delete the index. Lookup order: in-process dict, index file, model.
 
 ## Results (macOS arm64, Apple clang 21, system SQLite with FTS5)
 
