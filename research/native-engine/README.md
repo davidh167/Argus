@@ -1,4 +1,6 @@
-# Native engine: Python baseline (Phase 0)
+# Native engine: Python baseline (Phase 0) and native similarity (Phase 2)
+
+Phase 2 (native sparse TF-IDF similarity) is at the bottom of this file; everything above it is Phase 0.
 
 **Question.** Where does the time go in the current Python similar-roles, relevance-ranking and
 market-demand code, and is a native rewrite of the similar-roles path worth its speed claim?
@@ -86,3 +88,39 @@ complete. Close other heavy programs while it runs; timings are wall clock on a 
 
 Each report states the Phase 0 kill criterion mechanically from its own numbers: warm `find_similar`
 p95 < 50 ms and cold `find_similar` p95 < 1 s.
+
+## Phase 2: native similarity engine
+
+`app/native` and `native/src/sim.cpp` implement the "similar roles" ranking natively
+(`SIMILARITY_ENGINE=native`, the default). The Python implementation stays in `app/services/relevance.py`
+(`SIMILARITY_ENGINE=python`) as the reference; it is a parity/test switch, not a fallback.
+
+| Script | Does |
+|---|---|
+| `bench_parity.py` | the comparison itself: Python top-k vs native top-k for the same documents in the same order (ids, order, scores within 1e-9); used by the tests and the two scripts below |
+| `parity_snapshot.py` | parity for EVERY posting of a real exported snapshot (or `--synthetic N`), markdown report with counts and the first mismatches |
+| `run_native.py` | parity gate on a seeded sample, then timings: `find_similar_postings` cold and warm under each engine, index build from texts, one top-10 query, ctypes call overhead, and index memory in fresh subprocesses (`bench_memory.py`) |
+
+Both need the built library (`native/README.md`) and the throwaway Postgres database, like Phase 0. From the
+repo root:
+
+```bash
+# Synthetic, reproducible by anyone
+PYTHONPATH=. poetry run python research/native-engine/run_native.py \
+    --synthetic 3000 --out research/native-engine/reports/native_synthetic_3000.md
+PYTHONPATH=. poetry run python research/native-engine/run_native.py \
+    --synthetic 30000 --runs 10 --warmup 1 --out research/native-engine/reports/native_synthetic_30000.md
+
+# Real corpus (after export_snapshot.py wrote research/ranking-eval/data/)
+PYTHONPATH=. poetry run python research/native-engine/parity_snapshot.py \
+    --snapshot research/ranking-eval/data --out research/native-engine/reports/parity_snapshot.md
+PYTHONPATH=. poetry run python research/native-engine/run_native.py \
+    --snapshot research/ranking-eval/data --out research/native-engine/reports/native_snapshot.md
+```
+
+`run_native.py` stops before timing if its parity sample has a single mismatch. The exhaustive code-point,
+tricky-string and whole-corpus parity tests are `tests/test_native_similarity.py`.
+
+Reports: [`reports/native_synthetic_3000.md`](reports/native_synthetic_3000.md) and
+[`reports/native_synthetic_30000.md`](reports/native_synthetic_30000.md) (written by the commands above);
+`parity_snapshot.md` and `native_snapshot.md` are written by the owner's run on the real snapshot.
