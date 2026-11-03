@@ -36,6 +36,16 @@ jobs:
           python-version: "3.12"
       - run: pip install poetry
       - run: poetry install
+      # The similarity engine's parity tests (tests/test_native_similarity.py) need libargus. Build it
+      # without llama.cpp (-DARGUS_WITH_LLAMA=OFF: index and similarity only, no model, no GPU libraries);
+      # the embedder tests still skip themselves. ICU does the Unicode work; usearch is fetched by CMake.
+      - name: Build libargus (llama-free)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libicu-dev libsqlite3-dev
+          cmake -S native -B native/build-release -G Ninja -DARGUS_WITH_LLAMA=OFF -DARGUS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build native/build-release --target argus
+          echo "ARGUS_LIB_PATH=$GITHUB_WORKSPACE/native/build-release/libargus.so" >> "$GITHUB_ENV"
       - run: poetry run ruff check .
       - run: poetry run ruff format --check .
       - run: poetry run mypy
@@ -55,6 +65,21 @@ jobs:
           workspaces: desktop/src-tauri
       - run: cargo check --locked
 
+  # The index and similarity code without llama.cpp (-DARGUS_WITH_LLAMA=OFF): C++ tests under ASan + UBSan on
+  # Linux, where ICU is the system library.
+  native-linux:
+    name: native (linux, no llama.cpp)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build catch2 libbenchmark-dev libicu-dev libsqlite3-dev
+      - name: Configure C++ core (ASan + UBSan)
+        run: cmake -S native -B "$RUNNER_TEMP/native-build" -G Ninja -DARGUS_WITH_LLAMA=OFF -DARGUS_SANITIZE=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build C++ core
+        run: cmake --build "$RUNNER_TEMP/native-build"
+      - name: ctest
+        run: ctest --test-dir "$RUNNER_TEMP/native-build" --output-on-failure
+
   native:
     name: native
     runs-on: macos-latest
@@ -63,7 +88,7 @@ jobs:
       ARGUS_LLAMA_PREFIX: /opt/homebrew/opt/llama.cpp
     steps:
       - uses: actions/checkout@v7
-      - run: brew install cmake ninja catch2 google-benchmark llama.cpp
+      - run: brew install cmake ninja catch2 google-benchmark llama.cpp icu4c
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: native/rust/argus-core
