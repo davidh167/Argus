@@ -13,6 +13,7 @@ import bench_db
 import bench_report
 import bench_scan
 import bench_stub
+from app.config import settings
 from app.db import engine
 from app.services import relevance
 from bench_cases import run_cases
@@ -199,11 +200,12 @@ def test_scan_reports_no_change_for_ascii_corpus():
     assert result.n_top1_changed == 0
 
 
-def test_scan_top_k_matches_relevance_find_similar(session_factory):
+def test_scan_top_k_matches_relevance_find_similar(session_factory, monkeypatch):
     corpus = bench_corpus.generate_synthetic(60, seed=5)
     with session_factory() as db:
         bench_db.load_corpus(db, corpus)
         db.commit()
+    monkeypatch.setattr(settings, "similarity_engine", "python")
     relevance._similarity_index_cache.clear()
     token_lists = [
         bench_scan.tokenize_unicode(bench_scan.similarity_text(p.title, p.text))

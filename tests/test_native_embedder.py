@@ -25,7 +25,7 @@ OLLAMA_BLOB = (
 )
 MODEL = Path(os.environ["ARGUS_MODEL_PATH"]) if os.environ.get("ARGUS_MODEL_PATH") else OLLAMA_BLOB
 
-has_lib = native.DEFAULT_LIB.exists()
+has_lib = native.lib_path().exists()
 needs_lib = pytest.mark.skipif(not has_lib, reason="needs the built libargus (native/README.md)")
 needs_model = pytest.mark.skipif(
     not (has_lib and MODEL.exists()),

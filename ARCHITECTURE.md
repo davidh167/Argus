@@ -13,7 +13,9 @@ trustworthy as the profile changes.
   holds the logic; routers are thin. All routes except `/health` require a bearer token generated locally (`app/auth.py`).
 - **Surfaces**: a Tauri desktop app (Rust commands that call the backend API; plain JS UI), an MCP
   server, and a Manifest V3 Chrome extension. None duplicates business logic.
-- **Native core** (`native/`): optional in-process retrieval (C++20 with a C API and Rust bindings).
+- **Native core** (`native/`): in-process retrieval (C++20 with a C API and Rust bindings). The backend uses
+  it for embeddings and for the "similar roles" TF-IDF ranking (`SIMILARITY_ENGINE`; the Python
+  implementation stays as the parity reference, checked by `tests/test_native_similarity.py`).
 
 ## Data model
 

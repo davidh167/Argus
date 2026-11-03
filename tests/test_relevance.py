@@ -3,6 +3,8 @@ import math
 import pytest
 from sqlalchemy.orm import Session
 
+from app import native
+from app.config import settings
 from app.db import engine
 from app.schemas.profile import Criteria, ProfileSnapshotData, Skills
 from app.services import relevance
@@ -142,6 +144,15 @@ def db():
     connection.close()
 
 
+@pytest.fixture(params=["python", "native"])
+def similarity_engine(request, monkeypatch):
+    """Runs a test under both engines; the native one needs the built library (native/README.md)."""
+    if request.param == "native" and not native.lib_path().exists():
+        pytest.skip("needs the built libargus (native/README.md)")
+    monkeypatch.setattr(settings, "similarity_engine", request.param)
+    return request.param
+
+
 def test_rescore_all_sets_relevance_score_on_every_posting(db):
     posting, _ = capture_posting(
         db,
@@ -266,11 +277,11 @@ def _posting_with_text(db, name, url, *, title="ML Engineer", normalized_jd_text
     return posting
 
 
-def test_find_similar_postings_returns_none_for_unknown_id(db):
+def test_find_similar_postings_returns_none_for_unknown_id(db, similarity_engine):
     assert relevance.find_similar_postings(db, 999999) is None
 
 
-def test_find_similar_postings_orders_by_similarity(db):
+def test_find_similar_postings_orders_by_similarity(db, similarity_engine):
     target = _posting_with_text(
         db,
         "SimTargetCo",
@@ -295,13 +306,13 @@ def test_find_similar_postings_orders_by_similarity(db):
     assert ids.index(close.id) < ids.index(far.id)
 
 
-def test_find_similar_postings_excludes_the_target_itself(db):
+def test_find_similar_postings_excludes_the_target_itself(db, similarity_engine):
     target = _posting_with_text(db, "SimSelfCo", "https://simself.example.com/1")
     result = relevance.find_similar_postings(db, target.id, limit=1000)
     assert all(p.id != target.id for p, _sim, _flag in result)
 
 
-def test_find_similar_postings_respects_limit(db):
+def test_find_similar_postings_respects_limit(db, similarity_engine):
     target = _posting_with_text(db, "SimLimitCo", "https://simlimit.example.com/1")
     for i in range(5):
         _posting_with_text(db, f"SimLimitOtherCo{i}", f"https://simlimitother{i}.example.com/1")
@@ -309,7 +320,9 @@ def test_find_similar_postings_respects_limit(db):
     assert len(result) == 3
 
 
-def test_find_similar_postings_possibly_same_role_requires_same_company_and_threshold(db):
+def test_find_similar_postings_possibly_same_role_requires_same_company_and_threshold(
+    db, similarity_engine
+):
     from app.services.companies import get_or_create_company
     from app.services.postings import upsert_posting, write_stage1_verdict
 
@@ -369,7 +382,7 @@ def test_find_similar_postings_possibly_same_role_requires_same_company_and_thre
     assert flag_other is False  # different company -- never flagged
 
 
-def test_find_similar_postings_possibly_same_role_false_below_threshold(db):
+def test_find_similar_postings_possibly_same_role_false_below_threshold(db, similarity_engine):
     target = _posting_with_text(
         db,
         "SimBelowThreshCo",
@@ -467,6 +480,60 @@ def test_find_similar_postings_survives_across_separate_sessions():
             cleanup.execute(delete(Posting).where(Posting.id.in_(created_ids)))
             cleanup.execute(delete(Company).where(Company.id.in_(company_ids)))
             cleanup.close()
+
+
+def test_find_similar_postings_index_is_rebuilt_when_the_corpus_changes(db, similarity_engine):
+    target = _posting_with_text(
+        db, "SimCacheCo", "https://simcache.example.com/1", normalized_jd_text="rust compilers"
+    )
+    first = relevance.find_similar_postings(db, target.id, limit=50)
+    assert first is not None
+    assert relevance.find_similar_postings(db, target.id, limit=50) is not None  # cache hit
+    added = _posting_with_text(
+        db, "SimCacheTwoCo", "https://simcache.example.com/2", normalized_jd_text="rust compilers"
+    )
+    second = relevance.find_similar_postings(db, target.id, limit=50)
+    assert second is not None
+    assert added.id in [p.id for p, _sim, _flag in second]
+    assert added.id not in [p.id for p, _sim, _flag in first]
+
+
+def test_find_similar_postings_engines_agree(db):
+    """The same corpus ranked by both engines, through the real DB path and cache."""
+    if not native.lib_path().exists():
+        pytest.skip("needs the built libargus (native/README.md)")
+    texts = [
+        "kubernetes distributed systems python",
+        "kubernetes distributed systems golang",
+        "kubernetes distributed systems golang",
+        "sales quota outreach crm",
+        "caf\u00e9 \u0130stanbul \u039f\u0394\u039f\u03a3 kubernetes",
+        "",
+    ]
+    postings = [
+        _posting_with_text(
+            db, f"AgreeCo{i}", f"https://agree.example.com/{i}", normalized_jd_text=t
+        )
+        for i, t in enumerate(texts)
+    ]
+    results = {}
+    for name in ("python", "native"):
+        settings.similarity_engine = name  # type: ignore[assignment]
+        try:
+            results[name] = [
+                [
+                    (p.id, sim, flag)
+                    for p, sim, flag in relevance.find_similar_postings(db, t.id, 10)
+                ]
+                for t in postings
+            ]
+        finally:
+            settings.similarity_engine = "native"
+    for py_lists, nat_lists in zip(results["python"], results["native"]):
+        assert [i for i, _, _ in py_lists] == [i for i, _, _ in nat_lists]
+        assert [f for _, _, f in py_lists] == [f for _, _, f in nat_lists]
+        for (_, a, _), (_, b, _) in zip(py_lists, nat_lists):
+            assert abs(a - b) <= 1e-9
 
 
 # -- BM25 (bm25s) --

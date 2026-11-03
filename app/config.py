@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # model-download commands, if the library or model is missing. "ollama" calls a local Ollama server.
     # There is no automatic switch between them.
     embeddings_backend: Literal["ollama", "native"] = "native"
+    # Which implementation find_similar_postings runs. "native" (default) is the C++ engine in libargus;
+    # "python" is the original implementation, kept as the parity reference (tests, research/native-engine).
+    # A test/parity switch, not a fallback: a missing library or a failing call raises under "native".
+    similarity_engine: Literal["native", "python"] = "native"
     # Defaults (see app/native): the model native/tools/fetch_model.py downloads, the release build of
     # libargus under native/, and an index file next to the model directory.
     argus_model_path: str | None = None
