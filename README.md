@@ -94,8 +94,9 @@ Every route except `/health` needs the token, for example
 is gitignored. Be honest in `skills.core` versus `skills.developing` versus `skills.coursework`: the
 fit analysis weights them very differently.
 
-Embeddings for the skills view run in-process through the native core (`EMBEDDINGS_BACKEND=native`, the
-default), so two one-time steps are needed before the skills view works:
+Embeddings for the skills view and the "similar roles" ranking run in-process through the native core
+(`EMBEDDINGS_BACKEND=native` and `SIMILARITY_ENGINE=native`, the defaults), so two one-time steps are
+needed (ICU, from `brew install icu4c` or `libicu-dev`, is also required; see `native/README.md`):
 
 ```bash
 cmake -S native -B native/build-release -G Ninja && cmake --build native/build-release   # builds libargus
@@ -187,7 +188,7 @@ poetry run pytest
 The suite runs against its own throwaway database (`<name>_test`, recreated each run), so it never
 touches real data, and it makes no live API calls. That database stays on the server between runs so the
 next one is fast; drop it with `DROP DATABASE <name>_test` if you want it gone. CI runs the Python checks (lint, format, tests with
-coverage) plus a `cargo check` of the desktop app and the native core's C++ and Rust tests. The native core has its own C++ and Rust tests; see
+coverage; it first builds the llama-free native library so the similarity parity tests run) plus a `cargo check` of the desktop app and the native core's C++ and Rust tests. The native core has its own C++ and Rust tests; see
 `native/README.md`.
 
 ## Research
@@ -200,7 +201,7 @@ The evaluation harnesses and reports behind the Results table are in [research/R
   profile. Stage 1 does nothing until the profile lists title phrases (`title_fast_track`, `title_skip`),
   and a role type the old prompt excluded by name now has to be in `skip_patterns`.
 - The desktop app and the native core are developed and tested on macOS (Apple silicon) only.
-- The native core is not wired into the desktop app yet; the backend uses it for embeddings.
+- The native core is not wired into the desktop app yet; the backend uses it for embeddings and similar roles.
 - Evaluations in `research/` come from one user's postings and choices, so sample sizes are small.
 
 ## Notes

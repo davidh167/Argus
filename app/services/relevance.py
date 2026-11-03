@@ -15,6 +15,8 @@ import bm25s
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import native
+from app.config import settings
 from app.models.posting import Posting
 from app.schemas.profile import ProfileSnapshotData
 from app.services import profile as profile_service
@@ -32,7 +34,7 @@ SIMILAR_ROLE_SAME_COMPANY_THRESHOLD = 0.9
 # In-process cache of the corpus's similarity vectors: rebuilding them dominates find_similar_postings
 # (~0.5 s of ~0.8 s at ~2,700 postings) and it runs on every posting detail view. Keyed on (row count,
 # max last_seen_at, max detail_fetched_at), which together change whenever postings are upserted or
-# hydrated.
+# hydrated. Both engines (settings.similarity_engine) keep their index here, tagged with the engine.
 _similarity_index_cache: dict[str, tuple] = {}
 
 _TOKEN_RE = re.compile(r"\w+")
@@ -205,21 +207,53 @@ def _similarity_cache_key(db: Session):
     ).one()
 
 
+def python_similarity_vectors(documents: list[tuple[int, str]]) -> dict[int, dict[str, float]]:
+    """{id: tfidf_vector} for (id, text) documents, in the given order: the Python engine's index, and
+    the reference the native engine is checked against (tests/test_native_similarity.py)."""
+    token_lists = [tokenize(text) for _id, text in documents]
+    df = document_frequencies(token_lists)
+    idf = inverse_document_frequencies(df, n_docs=len(documents) or 1)
+    return {
+        pid: tfidf_vector(term_frequencies(tokens), idf)
+        for (pid, _text), tokens in zip(documents, token_lists)
+    }
+
+
+def python_top_k(
+    vectors: dict[int, dict[str, float]], posting_id: int, limit: int
+) -> list[tuple[int, float]]:
+    """The `limit` documents most similar to posting_id, best first, ties in the vectors' insertion order
+    (sorted() is stable)."""
+    target_vec = vectors[posting_id]
+    return sorted(
+        (
+            (pid, cosine_similarity(target_vec, vec))
+            for pid, vec in vectors.items()
+            if pid != posting_id
+        ),
+        key=lambda pair: pair[1],
+        reverse=True,
+    )[:limit]
+
+
 def _get_similarity_index(
     db: Session,
-) -> tuple[dict[int, dict[str, float]], dict[int, int]]:
-    """({posting_id: tfidf_vector}, {posting_id: company_id}) for the WHOLE
-    corpus -- cached, see _similarity_index_cache's module-level
-    docstring. Deliberately caches only plain ints/dicts, never ORM
-    Posting instances: those are bound to the Session that loaded them,
-    and a FastAPI request's Session is closed once the request ends
-    (Depends(get_db)) -- a cached ORM object reused on a LATER request
-    raises DetachedInstanceError the moment anything touches a
+) -> tuple[dict[int, dict[str, float]] | native.Similarity, dict[int, int]]:
+    """(index, {posting_id: company_id}) for the WHOLE corpus -- cached, see
+    _similarity_index_cache's module-level docstring. The index is the dict
+    {posting_id: tfidf_vector} for the Python engine and a native.Similarity for
+    the native one (settings.similarity_engine); either way it is rebuilt
+    whenever the cache key changes. Deliberately caches only plain ints/dicts
+    and the native handle, never ORM Posting instances: those are bound to the
+    Session that loaded them, and a FastAPI request's Session is closed once
+    the request ends (Depends(get_db)) -- a cached ORM object reused on a LATER
+    request raises DetachedInstanceError the moment anything touches a
     lazy-loaded attribute (e.g. posting.company in _to_summary). Found
     this live: the first call after a cache miss worked, the second
     (a fresh request/session reusing the cached objects) 500'd.
     """
-    key = _similarity_cache_key(db)
+    engine = settings.similarity_engine
+    key = (engine, *_similarity_cache_key(db))
     cached = _similarity_index_cache.get("index")
     if cached is not None and cached[0] == key:
         return cached[1]
@@ -229,18 +263,19 @@ def _get_similarity_index(
             select(Posting.id, Posting.title, Posting.normalized_jd_text, Posting.company_id)
         )
     )
-    token_lists = [
-        tokenize(_similarity_text(title, normalized)) for _id, title, normalized, _cid in rows
-    ]
-    df = document_frequencies(token_lists)
-    idf = inverse_document_frequencies(df, n_docs=len(rows) or 1)
-    vectors = {
-        pid: tfidf_vector(term_frequencies(tokens), idf)
-        for (pid, _title, _normalized, _cid), tokens in zip(rows, token_lists)
-    }
     company_ids = {pid: cid for pid, _title, _normalized, cid in rows}
+    index: dict[int, dict[str, float]] | native.Similarity
+    if engine == "native":
+        # Tie order in the native top-k is insertion order, i.e. this row order, as in the dict below.
+        index = native.Similarity(
+            (pid, _similarity_text(title, normalized)) for pid, title, normalized, _cid in rows
+        )
+    else:
+        index = python_similarity_vectors(
+            [(pid, _similarity_text(title, normalized)) for pid, title, normalized, _cid in rows]
+        )
 
-    result = (vectors, company_ids)
+    result = (index, company_ids)
     _similarity_index_cache["index"] = (key, result)
     return result
 
@@ -259,21 +294,18 @@ def find_similar_postings(
     pair above SIMILAR_ROLE_SAME_COMPANY_THRESHOLD -- see that constant
     for how it was calibrated against real data.
     """
-    vectors, company_ids = _get_similarity_index(db)
-    if posting_id not in vectors:
+    index, company_ids = _get_similarity_index(db)
+    if posting_id not in company_ids:
         return None
-    target_vec = vectors[posting_id]
     target_company_id = company_ids[posting_id]
 
-    scored = sorted(
-        (
-            (pid, cosine_similarity(target_vec, vec))
-            for pid, vec in vectors.items()
-            if pid != posting_id
-        ),
-        key=lambda pair: pair[1],
-        reverse=True,
-    )[:limit]
+    scored: list[tuple[int, float]]
+    if isinstance(index, native.Similarity):
+        top = index.top_k(posting_id, limit)
+        assert top is not None  # posting_id is in company_ids, which was built from the same rows
+        scored = top
+    else:
+        scored = python_top_k(index, posting_id, limit)
 
     # Fresh ORM objects from THIS request's session, in the order just
     # computed -- never the cached (id, vector) data itself.

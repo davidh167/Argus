@@ -7,12 +7,14 @@ Every case is `warmup` untimed runs, then `runs` timed runs (time.perf_counter a
 import random
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models.posting import Posting
 from app.schemas.profile import ProfileSnapshotData
 from app.services import profile as profile_service
@@ -21,6 +23,17 @@ from bench_report import COLD_CASE, WARM_CASE, CaseResults, Timing
 from bench_stub import stubbed_embedder
 
 SessionFactory = Callable[[], Session]
+
+
+@contextmanager
+def similarity_engine(name: str) -> Iterator[None]:
+    """Runs the block with settings.similarity_engine set to name (the Phase 0 cases pin "python")."""
+    previous = settings.similarity_engine
+    settings.similarity_engine = name  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        settings.similarity_engine = previous
 
 
 def measure(
@@ -62,6 +75,11 @@ def target_posting_ids(
 
 
 def run_cases(session_factory: SessionFactory, *, runs: int, warmup: int) -> CaseResults:
+    with similarity_engine("python"):
+        return _run_cases(session_factory, runs=runs, warmup=warmup)
+
+
+def _run_cases(session_factory: SessionFactory, *, runs: int, warmup: int) -> CaseResults:
     out = CaseResults()
     targets = target_posting_ids(session_factory)
     counter = {"i": 0}
