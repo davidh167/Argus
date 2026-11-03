@@ -364,7 +364,7 @@ def get_posting(posting_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{posting_id}/similar", response_model=list[SimilarPosting])
-def similar_postings(posting_id: int, limit: int = 10, db: Session = Depends(get_db)):
+def similar_postings(posting_id: int, limit: int = Query(10, ge=0), db: Session = Depends(get_db)):
     """TF-IDF cosine similarity over normalized_jd_text + title across the
     whole corpus (2.5) -- purely informational, never a merge/dedup
     signal. See relevance.find_similar_postings and

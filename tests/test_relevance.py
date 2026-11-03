@@ -559,3 +559,15 @@ def test_bm25_scores_empty_corpus_and_empty_query():
     # An empty profile has an empty query; it matches nothing rather than raising.
     assert relevance.bm25_scores(["alpha beta", "gamma"], "") == [0.0, 0.0]
     assert relevance.bm25_scores(["alpha beta", "gamma"], "the of") == [0.0, 0.0]  # stopwords only
+
+
+def test_similar_route_rejects_a_negative_limit():
+    from fastapi.testclient import TestClient
+
+    from app.config import settings
+    from app.main import app
+
+    resp = TestClient(app).get(
+        "/postings/1/similar?limit=-1", headers={"Authorization": f"Bearer {settings.api_token}"}
+    )
+    assert resp.status_code == 422
